@@ -1,7 +1,9 @@
 #pragma once
 #include "AbstractTable.h"
+#include "GroupContainer.h"
 #include "List.h"
 #include "MemoryManager.h"
+#include <string>
 
 // Структура для хранения пары ключ-значение
 typedef struct KeyValuePair
@@ -12,50 +14,15 @@ typedef struct KeyValuePair
     size_t valueSize; // Размер значения в байтах
 } KeyValuePair;
 
-// Класс ассоциативной таблицы, наследуемый от AbstractTable
-class Table : public AbstractTable
+// Класс ассоциативной таблицы, наследуемый от AbstractTable и GroupContainer
+class Table : public AbstractTable, public GroupContainer
 {
-private:
-    List* _list;     // Внутренний список для хранения элементов
-
 public:
-    // Класс-итератор для обхода ассоциативной таблицы
-    class TableIterator : public Iterator
-    {
-    private:
-        Iterator* _listIterator; // Внутренний итератор для обхода списка
-
-    public:
-        // Конструктор, принимающий итератор списка
-        TableIterator(Iterator* listIterator);
-
-        // Деструктор
-        ~TableIterator();
-
-        // Методы базового класса Iterator
-        void* getElement(size_t& size) override;
-        bool hasNext() override;
-        void goToNext() override;
-        bool equals(Iterator* right) override;
-
-        // Делаем Table другом TableIterator, чтобы он имел доступ к приватным полям
-        friend class Table;
-    };
-
     // Конструктор, принимающий менеджер памяти
     Table(MemoryManager& mem);
 
     // Деструктор
     ~Table();
-
-    // Методы базового класса Container
-    bool empty() override;
-    int size() override;
-    size_t max_bytes() override;
-    void clear() override;
-    Iterator* newIterator() override;
-    Iterator* find(void* elem, size_t size) override;
-    void remove(Iterator* iter) override;
 
     // Методы класса AbstractTable
     int insertByKey(void* key, size_t keySize, void* value, size_t valueSize) override;
@@ -63,8 +30,39 @@ public:
     void removeByKey(void* key, size_t keySize) override;
     Iterator* findByKey(void* key, size_t keySize) override;
 
+    // Метод из Container, переопределенный для поиска по значению
+    Iterator* find(void* elem, size_t size) override;
+
+    // Собственный итератор таблицы, наследуемый от GroupContainerIterator
+    class TableIterator : public GroupContainer::GroupContainerIterator
+    {
+    public:
+        // Конструктор
+        TableIterator(GroupContainer* container, size_t startIndex = 0);
+
+        // Переопределяем getElement, чтобы возвращать только значение
+        void* getElement(size_t& size) override;
+
+        friend class Table;
+    };
+
+    // Создание нового итератора таблицы
+    Iterator* newIterator() override;
+
+protected:
+    // Метод для удаления элемента (освобождение памяти ключа и значения)
+    void removeElement(void* element, size_t elemSize) override;
+
+    // Метод для очистки всех элементов в одной корзине
+    void clearBucket(size_t bucketIndex) override;
+
+    // Перехеширование таблицы
+    bool reHash() override;
+
 private:
+    // Преобразование ключа в строку для хеширования
+    std::string keyToString(void* key, size_t keySize);
+
     // Поиск пары ключ-значение по ключу
-    // Возвращает итератор на найденный элемент или nullptr, если ключ не найден
-    Container::Iterator* findPairByKey(void* key, size_t keySize);
+    Container::Iterator* findPairByKey(void* key, size_t keySize, size_t& bucketIndex);
 };

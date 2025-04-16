@@ -297,9 +297,9 @@ public:
     // Тест 9: Стресс-тест (много элементов)
     void testStress() {
         std::cout << "\n=== Тест 9: Стресс-тест (много элементов) ===\n";
-        std::cout << "Ожидается: Успешная вставка большого количества элементов\n";
+        std::cout << "Ожидается: Успешная вставка большого количества элементов и автоматическое перехеширование\n";
 
-        const int numElements = 100;
+        const int numElements = 1000;
         std::cout << "Вставка " << numElements << " элементов...\n";
 
         // Очищаем таблицу перед тестом
@@ -358,6 +358,64 @@ public:
         table->clear();
     }
 
+    // Тест 10: Поиск элемента по значению
+    void testFindByValue() {
+        std::cout << "\n=== Тест 10: Поиск элемента по значению ===\n";
+        std::cout << "Ожидается: Элемент успешно найден по значению\n";
+
+        // Сначала добавим несколько элементов
+        table->clear();
+
+        std::string key1 = "имя";
+        std::string value1 = "Иван";
+        std::string key2 = "фамилия";
+        std::string value2 = "Иванов";
+        std::string key3 = "возраст";
+        std::string value3 = "25";
+
+        table->insertByKey(
+            (void*)key1.c_str(), key1.size() + 1,
+            (void*)value1.c_str(), value1.size() + 1
+        );
+
+        table->insertByKey(
+            (void*)key2.c_str(), key2.size() + 1,
+            (void*)value2.c_str(), value2.size() + 1
+        );
+
+        table->insertByKey(
+            (void*)key3.c_str(), key3.size() + 1,
+            (void*)value3.c_str(), value3.size() + 1
+        );
+
+        // Теперь ищем элемент по значению
+        std::string searchValue = "Иванов";
+        Container::Iterator* iter = table->find(
+            (void*)searchValue.c_str(), searchValue.size() + 1
+        );
+
+        bool found = (iter != nullptr);
+        std::cout << "Поиск значения '" << searchValue << "': "
+            << (found ? "найдено" : "не найдено") << "\n";
+
+        if (found) {
+            // Получаем значение из итератора и проверяем, совпадает ли оно с искомым
+            size_t valueSize;
+            void* foundValue = iter->getElement(valueSize);
+            std::string foundValueStr = valueToString(foundValue, valueSize);
+
+            std::cout << "Найденное значение: '" << foundValueStr << "'\n";
+
+            bool valueCorrect = (foundValueStr == searchValue);
+            std::cout << "Тест " << (valueCorrect ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
+
+            delete iter;
+        }
+        else {
+            std::cout << "Тест ПРОВАЛЕН\n";
+        }
+    }
+
     // Запуск всех тестов
     void runAllTests() {
         std::cout << "======= НАЧАЛО ТЕСТИРОВАНИЯ АССОЦИАТИВНОЙ ТАБЛИЦЫ =======\n";
@@ -370,6 +428,7 @@ public:
         testIteration();
         testClear();
         testStress();
+        testFindByValue();
         std::cout << "======= ОКОНЧАНИЕ ТЕСТИРОВАНИЯ АССОЦИАТИВНОЙ ТАБЛИЦЫ =======\n";
     }
 };
@@ -379,8 +438,8 @@ int main() {
 
     std::cout << "=== Тестирование класса Table (Ассоциативная таблица) ===\n";
 
-    // Создаем тестировщик с 1МБ памяти
-    TableTester tester(1024 * 1024);
+    // Создаем тестировщик с 2МБ памяти
+    TableTester tester(2 * 1024 * 1024);
 
     // Запускаем все тесты
     tester.runAllTests();
