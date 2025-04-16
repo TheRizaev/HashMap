@@ -1,221 +1,214 @@
+#include <iostream>
+#include "AbstractList.h"
+#include "Mem.h"
+#include "MemoryManager.h"
 #include "List.h"
-#include <cstring>
+#include "Table.h"
 
-// Реализация методов итератора списка
-void* List::ListIterator::getElement(size_t& size)
+int List::push_front(void* element, size_t size)
 {
-    if (_current == nullptr)
-        return nullptr;
-
-    size = _current->dataSize;
-    return _current->data;
+	list_struct* newhead = (list_struct*)_memory.allocMem(sizeof(list_struct)); //memory check
+	newhead->elem = _memory.allocMem(size); // memory check
+	std::memcpy(newhead->elem, element, size);
+	newhead->size = size;
+	newhead->ptr = head;
+	head = newhead;
+	ElementCount++;
+	return 0;
 }
-
-bool List::ListIterator::hasNext()
-{
-    return _current != nullptr && _current->next != nullptr;
-}
-
-void List::ListIterator::goToNext()
-{
-    if (_current != nullptr)
-    {
-        _prev = _current;
-        _current = _current->next;
-    }
-}
-
-bool List::ListIterator::equals(Container::Iterator* right)
-{
-    List::ListIterator* rightIter = dynamic_cast<List::ListIterator*>(right);
-    if (rightIter == nullptr)
-        return false;
-
-    return _current == rightIter->_current;
-}
-
-// Реализация методов списка
-List::List(MemoryManager& mem) : AbstractList(mem), _head(nullptr), _size(0) {}
-
-List::~List()
-{
-    clear();
-}
-
-int List::size()
-{
-    return _size;
-}
-
-size_t List::max_bytes()
-{
-    return _memory.maxBytes();
-}
-
-Container::Iterator* List::find(void* elem, size_t size)
-{
-    Node* current = _head;
-    Node* prev = nullptr;
-
-    while (current != nullptr)
-    {
-        if (compareElements(current->data, current->dataSize, elem, size))
-            return new ListIterator(this, current, prev);
-
-        prev = current;
-        current = current->next;
-    }
-
-    return nullptr;
-}
-
-Container::Iterator* List::newIterator()
-{
-    if (_head == nullptr)
-        return nullptr;
-
-    return new ListIterator(this, _head);
-}
-
-void List::remove(Container::Iterator* iter)
-{
-    ListIterator* listIter = dynamic_cast<ListIterator*>(iter);
-    if (listIter == nullptr)
-        return;
-
-    Node* current = listIter->getCurrent();
-    Node* prev = listIter->getPrev();
-
-    if (current == nullptr)
-        return;
-
-    // Сохраняем указатель на следующий узел для обновления итератора
-    Node* nextNode = current->next;
-
-    if (prev == nullptr) // Удаляем первый элемент
-    {
-        _head = nextNode;
-    }
-    else
-    {
-        prev->next = nextNode;
-    }
-
-    // Освобождаем память данных узла
-    _memory.freeMem(current->data);
-
-    // Освобождаем память самого узла
-    delete current;
-    _size--;
-
-    // Безопасно обновляем итератор, используя новый метод setCurrent
-    listIter->setCurrent(nextNode);
-}
-
-void List::clear()
-{
-    Node* current = _head;
-    while (current != nullptr)
-    {
-        Node* next = current->next;
-        _memory.freeMem(current->data);
-        delete current;
-        current = next;
-    }
-    _head = nullptr;
-    _size = 0;
-}
-
-bool List::empty()
-{
-    return _head == nullptr;
-}
-
-int List::push_front(void* elem, size_t elemSize)
-{
-    try
-    {
-        // Выделяем память для данных
-        void* newData = _memory.allocMem(elemSize);
-        if (newData == nullptr)
-            return 1;
-
-        // Копируем данные
-        memcpy(newData, elem, elemSize);
-
-        // Создаем новый узел
-        Node* newNode = new Node(newData, elemSize, _head);
-        _head = newNode;
-        _size++;
-
-        return 0;
-    }
-    catch (...)
-    {
-        return 1;
-    }
-}
-
 void List::pop_front()
 {
-    if (_head == nullptr)
-        return;
-
-    Node* oldHead = _head;
-    _head = _head->next;
-
-    _memory.freeMem(oldHead->data);
-    delete oldHead;
-    _size--;
+	if (!head)
+		return;
+	else if (!head->ptr)
+	{
+		_memory.freeMem(head->elem);
+		_memory.freeMem(head);
+		ElementCount--;
+		head = nullptr;
+		return;
+	}
+	list_struct* newhead = head->ptr;
+	_memory.freeMem(head->elem);
+	_memory.freeMem(head);
+	ElementCount--;
+	head = newhead;
 }
-
-void* List::front(size_t& size)
+void* List::front(size_t& sz)
 {
-    if (_head == nullptr)
-        return nullptr;
-
-    size = _head->dataSize;
-    return _head->data;
+	if (!head)
+	{
+		sz = 0;
+		return nullptr;
+	}
+	sz = head->size;
+	return head->elem;
 }
-
-int List::insert(Container::Iterator* iter, void* elem, size_t elemSize)
+int List::insert(Iterator* iter, void* elem, size_t size)
 {
-    ListIterator* listIter = dynamic_cast<ListIterator*>(iter);
-    if (listIter == nullptr)
-        return 1;
-
-    Node* current = listIter->getCurrent();
-    Node* prev = listIter->getPrev();
-
-    try
-    {
-        // Выделяем память для данных
-        void* newData = _memory.allocMem(elemSize);
-        if (newData == nullptr)
-            return 1;
-
-        // Копируем данные
-        memcpy(newData, elem, elemSize);
-
-        // Создаем новый узел
-        Node* newNode = new Node(newData, elemSize);
-
-        if (prev == nullptr) // Вставка в начало
-        {
-            newNode->next = _head;
-            _head = newNode;
-        }
-        else // Вставка в середину или конец
-        {
-            newNode->next = current;
-            prev->next = newNode;
-        }
-
-        _size++;
-        return 0;
-    }
-    catch (...)
-    {
-        return 1;
-    }
+	if (!iter)
+	{
+		push_front(elem, size);
+		return 0;
+	}
+	list_struct* prev = ((ListIterator*)iter)->PrevStruct;
+	list_struct* curr = ((ListIterator*)iter)->CurrStruct;
+	list_struct* newstruct = (list_struct*)_memory.allocMem(sizeof(List_struct)); //memory check
+	newstruct->elem = _memory.allocMem(size); // memory check
+	std::memcpy(newstruct->elem, elem, size);
+	newstruct->size = size;
+	ElementCount++;
+	if (!prev) // in head
+	{
+		newstruct->ptr = head;
+		head = newstruct;
+		((ListIterator*)iter)->PrevStruct = nullptr;
+		((ListIterator*)iter)->CurrStruct = head;
+		return 0;
+	}
+	else if (!curr) // in tail
+	{
+		prev->ptr = newstruct;
+		newstruct->ptr = nullptr;
+		((ListIterator*)iter)->CurrStruct = newstruct;
+		return 0;
+	}
+	newstruct->ptr = prev->ptr;
+	prev->ptr = newstruct;
+	((ListIterator*)iter)->CurrStruct = newstruct;
+	return 0;
+}
+int List::size()
+{
+	return ElementCount;
+}
+size_t List::max_bytes()
+{
+	return MaxBytes;
+}
+Container::Iterator* List::find(void* elem, size_t size)
+{
+	if (!head)
+		return nullptr;
+	int sz = List::size();
+	list_struct* step = head, * prev_step = nullptr;
+	for (int i = 0; i < sz; i++)
+	{
+		if (step->size == size && !memcmp(step->elem, elem, size))
+		{
+			ListIterator* Iterator = new ListIterator;
+			Iterator->CurrStruct = step;
+			Iterator->PrevStruct = prev_step;
+			return Iterator;
+		}
+		prev_step = step;
+		step = step->ptr;
+	}
+	return nullptr;
+}
+Container::Iterator* List::newIterator()
+{
+	if (!head)
+		return nullptr;
+	ListIterator* Iterator = new ListIterator;
+	Iterator->CurrStruct = head;
+	return Iterator;
+}
+void List::remove(Iterator* iter)
+{
+	list_struct* prev = ((ListIterator*)iter)->PrevStruct;
+	list_struct* curr = ((ListIterator*)iter)->CurrStruct;
+	if ((!prev && !curr) || !curr)
+		return;
+	if (!prev) // first element
+	{
+		iter->goToNext();
+		pop_front();
+		((ListIterator*)iter)->PrevStruct = nullptr;
+		return;
+	}
+	ElementCount--;
+	if (!curr->ptr) // last element
+	{
+		_memory.freeMem(curr->elem);
+		_memory.freeMem(curr);
+		prev->ptr = nullptr;
+		((ListIterator*)iter)->CurrStruct = nullptr;
+		return;
+	}
+	iter->goToNext();
+	prev->ptr = curr->ptr;
+	_memory.freeMem(curr->elem);
+	_memory.freeMem(curr);
+	((ListIterator*)iter)->PrevStruct = prev;
+}
+void List::clear()
+{
+	if (!head)
+		return;
+	else if (!head->ptr)
+	{
+		_memory.freeMem(head->elem);
+		_memory.freeMem(head);
+		ElementCount = 0;
+		head = nullptr;
+		return;
+	}
+	size_t sz = size();
+	list_struct* next;
+	for (int i = 0; i < sz - 1; i++)
+	{
+		next = head->ptr;
+		_memory.freeMem(head->elem);
+		_memory.freeMem(head);
+		head = next;
+	}
+	_memory.freeMem(head->elem);
+	_memory.freeMem(head);
+	ElementCount = 0;
+	head = nullptr;
+}
+bool List::empty()
+{
+	if (!head)
+		return true;
+	return false;
+}
+void* List::ListIterator::getElement(size_t& sz)
+{
+	if (!CurrStruct)
+		return nullptr;
+	sz = CurrStruct->size;
+	return CurrStruct->elem;
+}
+bool List::ListIterator::hasNext()
+{
+	if (!CurrStruct)
+		return false;
+	else if (!CurrStruct->ptr)
+		return false;
+	return true;
+}
+void List::ListIterator::goToNext()
+{
+	if (CurrStruct)
+	{
+		PrevStruct = CurrStruct;
+		CurrStruct = CurrStruct->ptr;
+	}
+}
+bool List::ListIterator::equals(Iterator* right)
+{
+	if (!right)
+		return false;
+	ListIterator* IterRight = (ListIterator*)right;
+	if (CurrStruct == IterRight->CurrStruct)
+		return true;
+	else if (!CurrStruct || !IterRight->CurrStruct)
+		return false;
+	return false;
+}
+List::~List()
+{
+	this->clear();
 }
