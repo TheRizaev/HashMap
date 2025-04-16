@@ -1,4 +1,3 @@
-#pragma once
 #include "Container.h"
 #include "AbstractList.h"
 #include "List.h"

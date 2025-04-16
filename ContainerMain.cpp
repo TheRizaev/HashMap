@@ -1,140 +1,391 @@
 ﻿#include <iostream>
 #include <string>
+#include <iomanip>
 #include "Table.h"
 #include "Mem.h"
 #include <locale.h>
 
-void printValue(void* value, size_t size) {
-    if (value) {
-        char* str = static_cast<char*>(value);
-        std::cout << std::string(str, size - 1); // Вычитаем 1, чтобы не печатать нулевой символ
+/**
+ * Класс для тестирования ассоциативной таблицы
+ * Выполняет различные операции и проверяет их корректность
+ */
+class TableTester {
+private:
+    Table* table;
+    Mem* memory;
+
+    // Вспомогательная функция для печати значения
+    void printValue(void* value, size_t size) {
+        if (value) {
+            char* str = static_cast<char*>(value);
+            std::cout << std::string(str, size - 1); // Вычитаем 1, чтобы не печатать нулевой символ
+        }
+        else {
+            std::cout << "nullptr";
+        }
     }
-    else {
-        std::cout << "nullptr";
+
+    // Вспомогательная функция для получения строки из значения
+    std::string valueToString(void* value, size_t size) {
+        if (value) {
+            char* str = static_cast<char*>(value);
+            return std::string(str, size - 1); // Вычитаем 1, чтобы не включать нулевой символ
+        }
+        return "nullptr";
     }
-}
 
-int main() {
-    setlocale(LC_ALL, "Russian");
-    // Создаем менеджер памяти
-    Mem memory(1024 * 1024); // 1MB памяти
+public:
+    // Конструктор
+    TableTester(size_t memorySize) {
+        memory = new Mem(memorySize);
+        table = new Table(*memory);
+        std::cout << "Тестировщик таблицы создан с " << memorySize << " байтами памяти\n";
+    }
 
-    // Создаем таблицу
-    Table table(memory);
+    // Деструктор
+    ~TableTester() {
+        delete table;
+        delete memory;
+        std::cout << "Тестировщик таблицы уничтожен\n";
+    }
 
-    std::cout << "Создана пустая таблица. Размер: " << table.size() << std::endl;
-    std::cout << "Таблица пуста: " << (table.empty() ? "да" : "нет") << std::endl;
+    // Тест 1: Проверка создания пустой таблицы
+    void testEmptyTable() {
+        std::cout << "\n=== Тест 1: Проверка создания пустой таблицы ===\n";
+        std::cout << "Ожидается: Таблица создана и пуста. Размер = 0\n";
 
-    // Добавляем элементы в таблицу
-    std::string key1 = "имя";
-    std::string value1 = "Иван";
-    std::string key2 = "фамилия";
-    std::string value2 = "Иванов";
-    std::string key3 = "возраст";
-    std::string value3 = "25";
+        bool isEmpty = table->empty();
+        int size = table->size();
 
-    std::cout << "\nДобавляем элементы в таблицу...\n";
+        std::cout << "Результат: Таблица пуста: " << (isEmpty ? "да" : "нет")
+            << ", размер: " << size << "\n";
+        std::cout << "Тест " << (isEmpty && size == 0 ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
+    }
 
-    int result = table.insertByKey(
-        (void*)key1.c_str(), key1.size() + 1,
-        (void*)value1.c_str(), value1.size() + 1
-    );
-    std::cout << "Добавление '" << key1 << "': "
-        << (result == 0 ? "успешно" : "ошибка") << std::endl;
+    // Тест 2: Вставка элементов в таблицу
+    void testInsert() {
+        std::cout << "\n=== Тест 2: Вставка элементов в таблицу ===\n";
+        std::cout << "Ожидается: 3 элемента успешно вставлены. Размер = 3\n";
 
-    result = table.insertByKey(
-        (void*)key2.c_str(), key2.size() + 1,
-        (void*)value2.c_str(), value2.size() + 1
-    );
-    std::cout << "Добавление '" << key2 << "': "
-        << (result == 0 ? "успешно" : "ошибка") << std::endl;
+        std::string key1 = "имя";
+        std::string value1 = "Иван";
+        std::string key2 = "фамилия";
+        std::string value2 = "Иванов";
+        std::string key3 = "возраст";
+        std::string value3 = "25";
 
-    result = table.insertByKey(
-        (void*)key3.c_str(), key3.size() + 1,
-        (void*)value3.c_str(), value3.size() + 1
-    );
-    std::cout << "Добавление '" << key3 << "': "
-        << (result == 0 ? "успешно" : "ошибка") << std::endl;
+        int result1 = table->insertByKey(
+            (void*)key1.c_str(), key1.size() + 1,
+            (void*)value1.c_str(), value1.size() + 1
+        );
 
-    std::cout << "\nПосле добавления элементов. Размер: " << table.size() << std::endl;
-    std::cout << "Таблица пуста: " << (table.empty() ? "да" : "нет") << std::endl;
+        int result2 = table->insertByKey(
+            (void*)key2.c_str(), key2.size() + 1,
+            (void*)value2.c_str(), value2.size() + 1
+        );
 
-    // Получаем элементы по ключу
-    std::cout << "\nПолучаем элементы по ключу:\n";
+        int result3 = table->insertByKey(
+            (void*)key3.c_str(), key3.size() + 1,
+            (void*)value3.c_str(), value3.size() + 1
+        );
 
-    size_t valueSize;
-    void* value;
+        std::cout << "Результат вставки:\n";
+        std::cout << "Ключ '" << key1 << "': " << (result1 == 0 ? "успешно" : "ошибка") << "\n";
+        std::cout << "Ключ '" << key2 << "': " << (result2 == 0 ? "успешно" : "ошибка") << "\n";
+        std::cout << "Ключ '" << key3 << "': " << (result3 == 0 ? "успешно" : "ошибка") << "\n";
+        std::cout << "Размер таблицы: " << table->size() << "\n";
 
-    value = table.at((void*)key1.c_str(), key1.size() + 1, valueSize);
-    std::cout << key1 << ": ";
-    printValue(value, valueSize);
-    std::cout << std::endl;
+        bool insertSuccess = (result1 == 0 && result2 == 0 && result3 == 0);
+        bool sizeCorrect = (table->size() == 3);
 
-    value = table.at((void*)key2.c_str(), key2.size() + 1, valueSize);
-    std::cout << key2 << ": ";
-    printValue(value, valueSize);
-    std::cout << std::endl;
+        std::cout << "Тест " << (insertSuccess && sizeCorrect ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
+    }
 
-    value = table.at((void*)key3.c_str(), key3.size() + 1, valueSize);
-    std::cout << key3 << ": ";
-    printValue(value, valueSize);
-    std::cout << std::endl;
+    // Тест 3: Получение элементов по ключу
+    void testRetrieve() {
+        std::cout << "\n=== Тест 3: Получение элементов по ключу ===\n";
+        std::cout << "Ожидается: Получение 3 значений по ключам с правильными значениями\n";
 
-    // Пробуем получить несуществующий ключ
-    std::string nonExistentKey = "город";
-    value = table.at((void*)nonExistentKey.c_str(), nonExistentKey.size() + 1, valueSize);
-    std::cout << nonExistentKey << ": ";
-    printValue(value, valueSize);
-    std::cout << std::endl;
+        std::string key1 = "имя";
+        std::string expected1 = "Иван";
+        std::string key2 = "фамилия";
+        std::string expected2 = "Иванов";
+        std::string key3 = "возраст";
+        std::string expected3 = "25";
 
-    // Пробуем добавить элемент с уже существующим ключом
-    std::cout << "\nПробуем добавить элемент с существующим ключом:\n";
-    std::string newValue = "Петр";
-    result = table.insertByKey(
-        (void*)key1.c_str(), key1.size() + 1,
-        (void*)newValue.c_str(), newValue.size() + 1
-    );
-    std::cout << "Добавление '" << key1 << "': "
-        << (result == 0 ? "успешно" : "ошибка (ключ уже существует)") << std::endl;
+        size_t valueSize1, valueSize2, valueSize3;
+        void* value1 = table->at((void*)key1.c_str(), key1.size() + 1, valueSize1);
+        void* value2 = table->at((void*)key2.c_str(), key2.size() + 1, valueSize2);
+        void* value3 = table->at((void*)key3.c_str(), key3.size() + 1, valueSize3);
 
-    // Удаляем элемент
-    std::cout << "\nУдаляем элемент с ключом '" << key2 << "'\n";
-    table.removeByKey((void*)key2.c_str(), key2.size() + 1);
-    std::cout << "После удаления. Размер: " << table.size() << std::endl;
+        std::string actual1 = valueToString(value1, valueSize1);
+        std::string actual2 = valueToString(value2, valueSize2);
+        std::string actual3 = valueToString(value3, valueSize3);
 
-    // Проверяем, что элемент удален
-    size_t checkValueSize = 0;
-    void* checkValue = table.at((void*)key2.c_str(), key2.size() + 1, checkValueSize);
-    std::cout << key2 << ": ";
-    printValue(checkValue, checkValueSize);
-    std::cout << std::endl;
+        std::cout << "Результат получения:\n";
+        std::cout << "Ключ '" << key1 << "': ожидалось '" << expected1 << "', получено '" << actual1 << "'\n";
+        std::cout << "Ключ '" << key2 << "': ожидалось '" << expected2 << "', получено '" << actual2 << "'\n";
+        std::cout << "Ключ '" << key3 << "': ожидалось '" << expected3 << "', получено '" << actual3 << "'\n";
 
-    // Перебираем все элементы с помощью итератора
-    std::cout << "\nПеребираем все элементы таблицы:\n";
-    Container::Iterator* iter = table.newIterator();
-    if (iter) {
-        int index = 0;
+        bool retrieveSuccess = (
+            actual1 == expected1 &&
+            actual2 == expected2 &&
+            actual3 == expected3
+            );
+
+        std::cout << "Тест " << (retrieveSuccess ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
+    }
+
+    // Тест 4: Получение несуществующего ключа
+    void testNonExistentKey() {
+        std::cout << "\n=== Тест 4: Получение несуществующего ключа ===\n";
+        std::cout << "Ожидается: При запросе несуществующего ключа должен вернуться nullptr\n";
+
+        std::string nonExistentKey = "город";
+        size_t valueSize;
+        void* value = table->at((void*)nonExistentKey.c_str(), nonExistentKey.size() + 1, valueSize);
+
+        std::cout << "Результат получения:\n";
+        std::cout << "Ключ '" << nonExistentKey << "': ";
+        printValue(value, valueSize);
+        std::cout << "\n";
+
+        bool isNull = (value == nullptr);
+        std::cout << "Тест " << (isNull ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
+    }
+
+    // Тест 5: Вставка элемента с существующим ключом
+    void testDuplicateKey() {
+        std::cout << "\n=== Тест 5: Вставка элемента с существующим ключом ===\n";
+        std::cout << "Ожидается: Вставка должна завершиться ошибкой (результат не 0)\n";
+
+        std::string key = "имя";
+        std::string newValue = "Петр";
+
+        int result = table->insertByKey(
+            (void*)key.c_str(), key.size() + 1,
+            (void*)newValue.c_str(), newValue.size() + 1
+        );
+
+        std::cout << "Результат вставки:\n";
+        std::cout << "Ключ '" << key << "': "
+            << (result == 0 ? "успешно (ошибка теста)" : "ошибка (верно)") << "\n";
+
+        // Проверяем, что значение не изменилось
+        size_t valueSize;
+        void* value = table->at((void*)key.c_str(), key.size() + 1, valueSize);
+        std::string actualValue = valueToString(value, valueSize);
+
+        std::cout << "Значение ключа '" << key << "' после попытки вставки: " << actualValue << "\n";
+
+        bool insertFailed = (result != 0);
+        bool valueUnchanged = (actualValue == "Иван");
+
+        std::cout << "Тест " << (insertFailed && valueUnchanged ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
+    }
+
+    // Тест 6: Удаление элемента
+    void testRemove() {
+        std::cout << "\n=== Тест 6: Удаление элемента ===\n";
+        std::cout << "Ожидается: Элемент удален, размер уменьшен на 1\n";
+
+        std::string keyToRemove = "фамилия";
+        int sizeBefore = table->size();
+
+        // Проверяем, что элемент существует
+        size_t valueSizeBefore;
+        void* valueBefore = table->at((void*)keyToRemove.c_str(), keyToRemove.size() + 1, valueSizeBefore);
+
+        std::cout << "Значение перед удалением: ";
+        printValue(valueBefore, valueSizeBefore);
+        std::cout << "\n";
+
+        // Удаляем элемент
+        table->removeByKey((void*)keyToRemove.c_str(), keyToRemove.size() + 1);
+
+        // Проверяем, что элемент удален
+        size_t valueSizeAfter;
+        void* valueAfter = table->at((void*)keyToRemove.c_str(), keyToRemove.size() + 1, valueSizeAfter);
+
+        std::cout << "Значение после удаления: ";
+        printValue(valueAfter, valueSizeAfter);
+        std::cout << "\n";
+
+        int sizeAfter = table->size();
+
+        std::cout << "Размер до удаления: " << sizeBefore << "\n";
+        std::cout << "Размер после удаления: " << sizeAfter << "\n";
+
+        bool elementRemoved = (valueAfter == nullptr);
+        bool sizeDecreased = (sizeAfter == sizeBefore - 1);
+
+        std::cout << "Тест " << (elementRemoved && sizeDecreased ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
+    }
+
+    // Тест 7: Итерация по таблице
+    void testIteration() {
+        std::cout << "\n=== Тест 7: Итерация по таблице ===\n";
+        std::cout << "Ожидается: Перебор всех элементов таблицы через итератор\n";
+
+        Container::Iterator* iter = table->newIterator();
+        if (!iter) {
+            std::cout << "Ошибка: не удалось создать итератор!\n";
+            std::cout << "Тест ПРОВАЛЕН\n";
+            return;
+        }
+
+        std::cout << "Элементы таблицы:\n";
+        int count = 0;
+
         do {
-            size_t elemSize;
-            void* elemValue = iter->getElement(elemSize);
-            if (elemValue == nullptr) break;
+            size_t valueSize;
+            void* value = iter->getElement(valueSize);
+            if (!value) {
+                break;
+            }
 
-            std::cout << "Элемент " << index++ << ": ";
-            printValue(elemValue, elemSize);
-            std::cout << std::endl;
+            std::cout << "Элемент " << count++ << ": ";
+            printValue(value, valueSize);
+            std::cout << "\n";
 
-            if (!iter->hasNext()) break;
+            if (!iter->hasNext()) {
+                break;
+            }
+
             iter->goToNext();
         } while (true);
 
         delete iter;
+
+        std::cout << "Всего элементов через итератор: " << count << "\n";
+        std::cout << "Размер таблицы: " << table->size() << "\n";
+
+        bool iterationCorrect = (count == table->size());
+
+        std::cout << "Тест " << (iterationCorrect ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
     }
 
-    // Очищаем таблицу
-    std::cout << "\nОчищаем таблицу\n";
-    table.clear();
-    std::cout << "После очистки. Размер: " << table.size() << std::endl;
-    std::cout << "Таблица пуста: " << (table.empty() ? "да" : "нет") << std::endl;
+    // Тест 8: Очистка таблицы
+    void testClear() {
+        std::cout << "\n=== Тест 8: Очистка таблицы ===\n";
+        std::cout << "Ожидается: Таблица очищена, размер = 0\n";
+
+        int sizeBefore = table->size();
+        std::cout << "Размер до очистки: " << sizeBefore << "\n";
+
+        table->clear();
+
+        int sizeAfter = table->size();
+        bool isEmpty = table->empty();
+
+        std::cout << "Размер после очистки: " << sizeAfter << "\n";
+        std::cout << "Таблица пуста: " << (isEmpty ? "да" : "нет") << "\n";
+
+        // Проверяем, что все элементы удалены
+        size_t valueSize;
+        std::string key = "имя";
+        void* value = table->at((void*)key.c_str(), key.size() + 1, valueSize);
+        std::cout << "Попытка получить элемент 'имя': ";
+        printValue(value, valueSize);
+        std::cout << "\n";
+
+        bool clearSuccess = (sizeAfter == 0 && isEmpty && value == nullptr);
+
+        std::cout << "Тест " << (clearSuccess ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
+    }
+
+    // Тест 9: Стресс-тест (много элементов)
+    void testStress() {
+        std::cout << "\n=== Тест 9: Стресс-тест (много элементов) ===\n";
+        std::cout << "Ожидается: Успешная вставка большого количества элементов\n";
+
+        const int numElements = 100;
+        std::cout << "Вставка " << numElements << " элементов...\n";
+
+        // Очищаем таблицу перед тестом
+        table->clear();
+
+        int successCount = 0;
+        for (int i = 0; i < numElements; i++) {
+            std::string key = "key" + std::to_string(i);
+            std::string value = "value" + std::to_string(i);
+
+            int result = table->insertByKey(
+                (void*)key.c_str(), key.size() + 1,
+                (void*)value.c_str(), value.size() + 1
+            );
+
+            if (result == 0) {
+                successCount++;
+            }
+        }
+
+        int actualSize = table->size();
+
+        std::cout << "Успешно вставлено элементов: " << successCount << "/" << numElements << "\n";
+        std::cout << "Размер таблицы: " << actualSize << "\n";
+
+        // Проверяем несколько случайных элементов
+        int checkCount = 5;
+        std::cout << "Проверка " << checkCount << " случайных элементов:\n";
+
+        int correctValues = 0;
+        for (int j = 0; j < checkCount; j++) {
+            int index = j * (numElements / checkCount);
+            std::string key = "key" + std::to_string(index);
+            std::string expectedValue = "value" + std::to_string(index);
+
+            size_t valueSize;
+            void* value = table->at((void*)key.c_str(), key.size() + 1, valueSize);
+            std::string actualValue = valueToString(value, valueSize);
+
+            std::cout << "Ключ '" << key << "': ожидалось '" << expectedValue
+                << "', получено '" << actualValue << "' - "
+                << (actualValue == expectedValue ? "верно" : "ошибка") << "\n";
+
+            if (actualValue == expectedValue) {
+                correctValues++;
+            }
+        }
+
+        bool stressSuccess = (successCount == numElements &&
+            actualSize == numElements &&
+            correctValues == checkCount);
+
+        std::cout << "Тест " << (stressSuccess ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
+
+        // Очищаем таблицу после теста
+        table->clear();
+    }
+
+    // Запуск всех тестов
+    void runAllTests() {
+        std::cout << "======= НАЧАЛО ТЕСТИРОВАНИЯ АССОЦИАТИВНОЙ ТАБЛИЦЫ =======\n";
+        testEmptyTable();
+        testInsert();
+        testRetrieve();
+        testNonExistentKey();
+        testDuplicateKey();
+        testRemove();
+        testIteration();
+        testClear();
+        testStress();
+        std::cout << "======= ОКОНЧАНИЕ ТЕСТИРОВАНИЯ АССОЦИАТИВНОЙ ТАБЛИЦЫ =======\n";
+    }
+};
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+
+    std::cout << "=== Тестирование класса Table (Ассоциативная таблица) ===\n";
+
+    // Создаем тестировщик с 1МБ памяти
+    TableTester tester(1024 * 1024);
+
+    // Запускаем все тесты
+    tester.runAllTests();
+
+    std::cout << "\nТестирование завершено.\n";
 
     return 0;
 }

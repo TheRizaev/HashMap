@@ -27,6 +27,13 @@ int Table::size()
     return _list->size();
 }
 
+size_t Table::max_bytes()
+{
+    // Возвращаем максимальное количество байт, которое может хранить таблица
+    // Используем значение из списка, если оно доступно
+    return _list->max_bytes();
+}
+
 void Table::clear()
 {
     // Перед очисткой списка нужно освободить память для всех ключей и значений
@@ -207,6 +214,88 @@ Container::Iterator* Table::findPairByKey(void* key, size_t keySize)
             delete iter;
             return nullptr;
         }
+    }
+}
+
+// Реализация метода findByKey из AbstractTable
+Container::Iterator* Table::findByKey(void* key, size_t keySize)
+{
+    Container::Iterator* iter = findPairByKey(key, keySize);
+    if (!iter)
+    {
+        return nullptr;
+    }
+    
+    // Создаем новый итератор таблицы
+    TableIterator* tableIter = new TableIterator(iter);
+    return tableIter;
+}
+
+// Поиск элемента по значению
+Container::Iterator* Table::find(void* elem, size_t size)
+{
+    Container::Iterator* iter = _list->newIterator();
+    if (!iter)
+    {
+        return nullptr;
+    }
+    
+    // Обходим список и ищем пару с указанным значением
+    while (true)
+    {
+        size_t pairSize;
+        KeyValuePair* pair = static_cast<KeyValuePair*>(iter->getElement(pairSize));
+        
+        if (!pair)
+        {
+            delete iter;
+            return nullptr;
+        }
+        
+        // Сравниваем значения
+        if (pair->valueSize == size && memcmp(pair->value, elem, size) == 0)
+        {
+            // Значение найдено
+            return new TableIterator(iter);
+        }
+        
+        // Переходим к следующему элементу
+        if (iter->hasNext())
+        {
+            iter->goToNext();
+        }
+        else
+        {
+            // Достигнут конец списка, значение не найдено
+            delete iter;
+            return nullptr;
+        }
+    }
+}
+
+// Удаление элемента по итератору
+void Table::remove(Iterator* iter)
+{
+    if (!iter) return;
+    
+    TableIterator* tableIter = dynamic_cast<TableIterator*>(iter);
+    if (!tableIter || !tableIter->_listIterator) return;
+    
+    // Получаем пару ключ-значение для освобождения памяти
+    size_t pairSize;
+    KeyValuePair* pair = static_cast<KeyValuePair*>(tableIter->_listIterator->getElement(pairSize));
+    
+    if (pair)
+    {
+        // Освобождаем память для ключа и значения
+        _memory.freeMem(pair->key);
+        _memory.freeMem(pair->value);
+        
+        // Удаляем элемент из списка
+        _list->remove(tableIter->_listIterator);
+        
+        // Обнуляем указатель на итератор списка, чтобы избежать двойного удаления
+        tableIter->_listIterator = nullptr;
     }
 }
 
