@@ -1,7 +1,7 @@
 #pragma once
 #include "Container.h"
 
-// Базовый класс для однонаправленного и двунаправленного списков
+// Базовый класс для однонаправленного списка
 class GroupList : public Container
 {
 public:

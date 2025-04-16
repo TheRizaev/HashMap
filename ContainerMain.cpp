@@ -1,450 +1,232 @@
-﻿#include <iostream>
+#include "GroupContainer.h"
 #include <string>
-#include <iomanip>
-#include "Table.h"
-#include "Mem.h"
-#include <locale.h>
 
-/**
- * Класс для тестирования ассоциативной таблицы
- * Выполняет различные операции и проверяет их корректность
- */
-class TableTester {
-private:
-    Table* table;
-    Mem* memory;
+// �����������
+GroupContainer::GroupContainer(MemoryManager& mem) : Container(mem) {
+    amountOfElements = 0;
+    arraySize = 1000;
+    hashTable = (List**)_memory.allocMem(sizeof(List*) * arraySize);
+    for (size_t i = 0; i < arraySize; i++) {
+        hashTable[i] = nullptr;
+    }
+}
 
-    // Вспомогательная функция для печати значения
-    void printValue(void* value, size_t size) {
-        if (value) {
-            char* str = static_cast<char*>(value);
-            std::cout << std::string(str, size - 1); // Вычитаем 1, чтобы не печатать нулевой символ
+// ����������
+GroupContainer::~GroupContainer() {
+    if (hashTable) {
+        _memory.freeMem(hashTable);
+        hashTable = nullptr;
+    }
+}
+
+// ��������� ������������ �������� ���-�������
+double GroupContainer::getLoadFactor() {
+    if (arraySize == 0) return 0.0;
+    return static_cast<double>(amountOfElements) / arraySize;
+}
+
+// ��������� �������� ���������
+void GroupContainer::increaseAmount() {
+    amountOfElements++;
+}
+
+void GroupContainer::decreaseAmount() {
+    if (amountOfElements > 0) amountOfElements--;
+}
+
+// ���-������� ��� ����� (���������� ������������� ������)
+size_t GroupContainer::hashFunc(const std::string& key) {
+    size_t hash = 0;
+    for (char c : key) {
+        hash = hash * 31 + c;
+    }
+    return hash;
+}
+
+// ������ � ���������� ������
+size_t GroupContainer::getArraySize() const {
+    return arraySize;
+}
+
+List** GroupContainer::getTable() const {
+    return hashTable;
+}
+
+// ������ �� �������� ������ Container
+bool GroupContainer::empty() {
+    return amountOfElements == 0;
+}
+
+int GroupContainer::size() {
+    return amountOfElements;
+}
+
+size_t GroupContainer::max_bytes() {
+    return arraySize * sizeof(List*);
+}
+
+// ����������� ���������
+GroupContainer::GroupContainerIterator::GroupContainerIterator(GroupContainer* container, size_t startIndex)
+    : myContainer(container), index(startIndex), currentList(nullptr), listIterator(nullptr)
+{
+    if (!myContainer || !myContainer->hashTable)
+        return;
+
+    // ������� ������ �������� ������
+    for (size_t i = startIndex; i < myContainer->arraySize; i++) {
+        if (myContainer->hashTable[i]) {
+            currentList = myContainer->hashTable[i];
+            listIterator = currentList->newIterator();
+            index = i;
+            break;
         }
-        else {
-            std::cout << "nullptr";
-        }
+    }
+}
+
+// ���������� ���������
+GroupContainer::GroupContainerIterator::~GroupContainerIterator() {
+    if (listIterator) {
+        delete listIterator;
+        listIterator = nullptr;
+    }
+}
+
+// ��������� �������� ��������
+void* GroupContainer::GroupContainerIterator::getElement(size_t& size) {
+    if (!currentList || !listIterator) {
+        size = 0;
+        return nullptr;
+    }
+    return listIterator->getElement(size);
+}
+
+// �������� ������� ���������� ��������
+bool GroupContainer::GroupContainerIterator::hasNext() {
+    if (!myContainer || !myContainer->hashTable)
+        return false;
+
+    // ���� ������� ������ ���� � � ��� ���� ��������� �������
+    if (currentList && listIterator && listIterator->hasNext())
+        return true;
+
+    // ���� ��������� �������� ������
+    for (size_t i = index + 1; i < myContainer->arraySize; i++) {
+        if (myContainer->hashTable[i])
+            return true;
     }
 
-    // Вспомогательная функция для получения строки из значения
-    std::string valueToString(void* value, size_t size) {
-        if (value) {
-            char* str = static_cast<char*>(value);
-            return std::string(str, size - 1); // Вычитаем 1, чтобы не включать нулевой символ
-        }
-        return "nullptr";
+    return false;
+}
+
+// ������� � ���������� ��������
+void GroupContainer::GroupContainerIterator::goToNext() {
+    if (!myContainer || !myContainer->hashTable)
+        return;
+
+    // ���� � ������� ������ ���� ��������� �������
+    if (currentList && listIterator && listIterator->hasNext()) {
+        listIterator->goToNext();
+        return;
     }
 
-public:
-    // Конструктор
-    TableTester(size_t memorySize) {
-        memory = new Mem(memorySize);
-        table = new Table(*memory);
-        std::cout << "Тестировщик таблицы создан с " << memorySize << " байтами памяти\n";
+    // ����������� ������� ��������
+    if (listIterator) {
+        delete listIterator;
+        listIterator = nullptr;
     }
 
-    // Деструктор
-    ~TableTester() {
-        delete table;
-        delete memory;
-        std::cout << "Тестировщик таблицы уничтожен\n";
-    }
-
-    // Тест 1: Проверка создания пустой таблицы
-    void testEmptyTable() {
-        std::cout << "\n=== Тест 1: Проверка создания пустой таблицы ===\n";
-        std::cout << "Ожидается: Таблица создана и пуста. Размер = 0\n";
-
-        bool isEmpty = table->empty();
-        int size = table->size();
-
-        std::cout << "Результат: Таблица пуста: " << (isEmpty ? "да" : "нет")
-            << ", размер: " << size << "\n";
-        std::cout << "Тест " << (isEmpty && size == 0 ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
-    }
-
-    // Тест 2: Вставка элементов в таблицу
-    void testInsert() {
-        std::cout << "\n=== Тест 2: Вставка элементов в таблицу ===\n";
-        std::cout << "Ожидается: 3 элемента успешно вставлены. Размер = 3\n";
-
-        std::string key1 = "имя";
-        std::string value1 = "Иван";
-        std::string key2 = "фамилия";
-        std::string value2 = "Иванов";
-        std::string key3 = "возраст";
-        std::string value3 = "25";
-
-        int result1 = table->insertByKey(
-            (void*)key1.c_str(), key1.size() + 1,
-            (void*)value1.c_str(), value1.size() + 1
-        );
-
-        int result2 = table->insertByKey(
-            (void*)key2.c_str(), key2.size() + 1,
-            (void*)value2.c_str(), value2.size() + 1
-        );
-
-        int result3 = table->insertByKey(
-            (void*)key3.c_str(), key3.size() + 1,
-            (void*)value3.c_str(), value3.size() + 1
-        );
-
-        std::cout << "Результат вставки:\n";
-        std::cout << "Ключ '" << key1 << "': " << (result1 == 0 ? "успешно" : "ошибка") << "\n";
-        std::cout << "Ключ '" << key2 << "': " << (result2 == 0 ? "успешно" : "ошибка") << "\n";
-        std::cout << "Ключ '" << key3 << "': " << (result3 == 0 ? "успешно" : "ошибка") << "\n";
-        std::cout << "Размер таблицы: " << table->size() << "\n";
-
-        bool insertSuccess = (result1 == 0 && result2 == 0 && result3 == 0);
-        bool sizeCorrect = (table->size() == 3);
-
-        std::cout << "Тест " << (insertSuccess && sizeCorrect ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
-    }
-
-    // Тест 3: Получение элементов по ключу
-    void testRetrieve() {
-        std::cout << "\n=== Тест 3: Получение элементов по ключу ===\n";
-        std::cout << "Ожидается: Получение 3 значений по ключам с правильными значениями\n";
-
-        std::string key1 = "имя";
-        std::string expected1 = "Иван";
-        std::string key2 = "фамилия";
-        std::string expected2 = "Иванов";
-        std::string key3 = "возраст";
-        std::string expected3 = "25";
-
-        size_t valueSize1, valueSize2, valueSize3;
-        void* value1 = table->at((void*)key1.c_str(), key1.size() + 1, valueSize1);
-        void* value2 = table->at((void*)key2.c_str(), key2.size() + 1, valueSize2);
-        void* value3 = table->at((void*)key3.c_str(), key3.size() + 1, valueSize3);
-
-        std::string actual1 = valueToString(value1, valueSize1);
-        std::string actual2 = valueToString(value2, valueSize2);
-        std::string actual3 = valueToString(value3, valueSize3);
-
-        std::cout << "Результат получения:\n";
-        std::cout << "Ключ '" << key1 << "': ожидалось '" << expected1 << "', получено '" << actual1 << "'\n";
-        std::cout << "Ключ '" << key2 << "': ожидалось '" << expected2 << "', получено '" << actual2 << "'\n";
-        std::cout << "Ключ '" << key3 << "': ожидалось '" << expected3 << "', получено '" << actual3 << "'\n";
-
-        bool retrieveSuccess = (
-            actual1 == expected1 &&
-            actual2 == expected2 &&
-            actual3 == expected3
-            );
-
-        std::cout << "Тест " << (retrieveSuccess ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
-    }
-
-    // Тест 4: Получение несуществующего ключа
-    void testNonExistentKey() {
-        std::cout << "\n=== Тест 4: Получение несуществующего ключа ===\n";
-        std::cout << "Ожидается: При запросе несуществующего ключа должен вернуться nullptr\n";
-
-        std::string nonExistentKey = "город";
-        size_t valueSize;
-        void* value = table->at((void*)nonExistentKey.c_str(), nonExistentKey.size() + 1, valueSize);
-
-        std::cout << "Результат получения:\n";
-        std::cout << "Ключ '" << nonExistentKey << "': ";
-        printValue(value, valueSize);
-        std::cout << "\n";
-
-        bool isNull = (value == nullptr);
-        std::cout << "Тест " << (isNull ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
-    }
-
-    // Тест 5: Вставка элемента с существующим ключом
-    void testDuplicateKey() {
-        std::cout << "\n=== Тест 5: Вставка элемента с существующим ключом ===\n";
-        std::cout << "Ожидается: Вставка должна завершиться ошибкой (результат не 0)\n";
-
-        std::string key = "имя";
-        std::string newValue = "Петр";
-
-        int result = table->insertByKey(
-            (void*)key.c_str(), key.size() + 1,
-            (void*)newValue.c_str(), newValue.size() + 1
-        );
-
-        std::cout << "Результат вставки:\n";
-        std::cout << "Ключ '" << key << "': "
-            << (result == 0 ? "успешно (ошибка теста)" : "ошибка (верно)") << "\n";
-
-        // Проверяем, что значение не изменилось
-        size_t valueSize;
-        void* value = table->at((void*)key.c_str(), key.size() + 1, valueSize);
-        std::string actualValue = valueToString(value, valueSize);
-
-        std::cout << "Значение ключа '" << key << "' после попытки вставки: " << actualValue << "\n";
-
-        bool insertFailed = (result != 0);
-        bool valueUnchanged = (actualValue == "Иван");
-
-        std::cout << "Тест " << (insertFailed && valueUnchanged ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
-    }
-
-    // Тест 6: Удаление элемента
-    void testRemove() {
-        std::cout << "\n=== Тест 6: Удаление элемента ===\n";
-        std::cout << "Ожидается: Элемент удален, размер уменьшен на 1\n";
-
-        std::string keyToRemove = "фамилия";
-        int sizeBefore = table->size();
-
-        // Проверяем, что элемент существует
-        size_t valueSizeBefore;
-        void* valueBefore = table->at((void*)keyToRemove.c_str(), keyToRemove.size() + 1, valueSizeBefore);
-
-        std::cout << "Значение перед удалением: ";
-        printValue(valueBefore, valueSizeBefore);
-        std::cout << "\n";
-
-        // Удаляем элемент
-        table->removeByKey((void*)keyToRemove.c_str(), keyToRemove.size() + 1);
-
-        // Проверяем, что элемент удален
-        size_t valueSizeAfter;
-        void* valueAfter = table->at((void*)keyToRemove.c_str(), keyToRemove.size() + 1, valueSizeAfter);
-
-        std::cout << "Значение после удаления: ";
-        printValue(valueAfter, valueSizeAfter);
-        std::cout << "\n";
-
-        int sizeAfter = table->size();
-
-        std::cout << "Размер до удаления: " << sizeBefore << "\n";
-        std::cout << "Размер после удаления: " << sizeAfter << "\n";
-
-        bool elementRemoved = (valueAfter == nullptr);
-        bool sizeDecreased = (sizeAfter == sizeBefore - 1);
-
-        std::cout << "Тест " << (elementRemoved && sizeDecreased ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
-    }
-
-    // Тест 7: Итерация по таблице
-    void testIteration() {
-        std::cout << "\n=== Тест 7: Итерация по таблице ===\n";
-        std::cout << "Ожидается: Перебор всех элементов таблицы через итератор\n";
-
-        Container::Iterator* iter = table->newIterator();
-        if (!iter) {
-            std::cout << "Ошибка: не удалось создать итератор!\n";
-            std::cout << "Тест ПРОВАЛЕН\n";
+    // ���� ��������� �������� ������
+    for (size_t i = index + 1; i < myContainer->arraySize; i++) {
+        if (myContainer->hashTable[i]) {
+            currentList = myContainer->hashTable[i];
+            listIterator = currentList->newIterator();
+            index = i;
             return;
         }
-
-        std::cout << "Элементы таблицы:\n";
-        int count = 0;
-
-        do {
-            size_t valueSize;
-            void* value = iter->getElement(valueSize);
-            if (!value) {
-                break;
-            }
-
-            std::cout << "Элемент " << count++ << ": ";
-            printValue(value, valueSize);
-            std::cout << "\n";
-
-            if (!iter->hasNext()) {
-                break;
-            }
-
-            iter->goToNext();
-        } while (true);
-
-        delete iter;
-
-        std::cout << "Всего элементов через итератор: " << count << "\n";
-        std::cout << "Размер таблицы: " << table->size() << "\n";
-
-        bool iterationCorrect = (count == table->size());
-
-        std::cout << "Тест " << (iterationCorrect ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
     }
 
-    // Тест 8: Очистка таблицы
-    void testClear() {
-        std::cout << "\n=== Тест 8: Очистка таблицы ===\n";
-        std::cout << "Ожидается: Таблица очищена, размер = 0\n";
+    // ���� �� ����� ��������� ������
+    currentList = nullptr;
+}
 
-        int sizeBefore = table->size();
-        std::cout << "Размер до очистки: " << sizeBefore << "\n";
+// ��������� ����������
+bool GroupContainer::GroupContainerIterator::equals(Iterator* right) {
+    if (!right)
+        return false;
 
-        table->clear();
+    GroupContainerIterator* rightIter = dynamic_cast<GroupContainerIterator*>(right);
+    if (!rightIter)
+        return false;
 
-        int sizeAfter = table->size();
-        bool isEmpty = table->empty();
+    // ���������� ��������� �� ��������� � ������
+    if (myContainer != rightIter->myContainer || index != rightIter->index)
+        return false;
 
-        std::cout << "Размер после очистки: " << sizeAfter << "\n";
-        std::cout << "Таблица пуста: " << (isEmpty ? "да" : "нет") << "\n";
+    // ���� ��� ��������� ��������� �� ����� (��� �������� ������)
+    if (!currentList && !rightIter->currentList)
+        return true;
 
-        // Проверяем, что все элементы удалены
-        size_t valueSize;
-        std::string key = "имя";
-        void* value = table->at((void*)key.c_str(), key.size() + 1, valueSize);
-        std::cout << "Попытка получить элемент 'имя': ";
-        printValue(value, valueSize);
-        std::cout << "\n";
+    // ���� ���� �� ���������� ��������� �� �����
+    if (!currentList || !rightIter->currentList)
+        return false;
 
-        bool clearSuccess = (sizeAfter == 0 && isEmpty && value == nullptr);
+    // ���������� ��������� ������
+    if (!listIterator || !rightIter->listIterator)
+        return false;
 
-        std::cout << "Тест " << (clearSuccess ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
-    }
+    return listIterator->equals(rightIter->listIterator);
+}
 
-    // Тест 9: Стресс-тест (много элементов)
-    void testStress() {
-        std::cout << "\n=== Тест 9: Стресс-тест (много элементов) ===\n";
-        std::cout << "Ожидается: Успешная вставка большого количества элементов и автоматическое перехеширование\n";
+// �������� ������ ���������
+Iterator* GroupContainer::newIterator() {
+    if (empty())
+        return nullptr;
+    return new GroupContainerIterator(this);
+}
 
-        const int numElements = 1000;
-        std::cout << "Вставка " << numElements << " элементов...\n";
+// �������� �������� �� ���������
+void GroupContainer::remove(Iterator* iter) {
+    if (!iter) return;
 
-        // Очищаем таблицу перед тестом
-        table->clear();
+    GroupContainerIterator* gcIter = dynamic_cast<GroupContainerIterator*>(iter);
+    if (!gcIter || !gcIter->currentList || !gcIter->listIterator) return;
 
-        int successCount = 0;
-        for (int i = 0; i < numElements; i++) {
-            std::string key = "key" + std::to_string(i);
-            std::string value = "value" + std::to_string(i);
+    // ������� ������� �� ������
+    size_t elemSize;
+    void* element = gcIter->listIterator->getElement(elemSize);
+    if (element) {
+        // ������� ������ �������� (���������� ��� ������� ����������)
+        removeElement(element, elemSize);
 
-            int result = table->insertByKey(
-                (void*)key.c_str(), key.size() + 1,
-                (void*)value.c_str(), value.size() + 1
-            );
+        // ������� ������� �� ������
+        gcIter->currentList->remove(gcIter->listIterator);
 
-            if (result == 0) {
-                successCount++;
-            }
+        // ��������� ������� ���������
+        decreaseAmount();
+
+        // ���� ������ ���� ������, ������� ���
+        if (gcIter->currentList->empty()) {
+            delete gcIter->currentList;
+            hashTable[gcIter->index] = nullptr;
+            gcIter->currentList = nullptr;
         }
 
-        int actualSize = table->size();
+        // �������� ��������� �� �������� ������
+        gcIter->listIterator = nullptr;
 
-        std::cout << "Успешно вставлено элементов: " << successCount << "/" << numElements << "\n";
-        std::cout << "Размер таблицы: " << actualSize << "\n";
-
-        // Проверяем несколько случайных элементов
-        int checkCount = 5;
-        std::cout << "Проверка " << checkCount << " случайных элементов:\n";
-
-        int correctValues = 0;
-        for (int j = 0; j < checkCount; j++) {
-            int index = j * (numElements / checkCount);
-            std::string key = "key" + std::to_string(index);
-            std::string expectedValue = "value" + std::to_string(index);
-
-            size_t valueSize;
-            void* value = table->at((void*)key.c_str(), key.size() + 1, valueSize);
-            std::string actualValue = valueToString(value, valueSize);
-
-            std::cout << "Ключ '" << key << "': ожидалось '" << expectedValue
-                << "', получено '" << actualValue << "' - "
-                << (actualValue == expectedValue ? "верно" : "ошибка") << "\n";
-
-            if (actualValue == expectedValue) {
-                correctValues++;
-            }
-        }
-
-        bool stressSuccess = (successCount == numElements &&
-            actualSize == numElements &&
-            correctValues == checkCount);
-
-        std::cout << "Тест " << (stressSuccess ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
-
-        // Очищаем таблицу после теста
-        table->clear();
+        // ��������� � ���������� ��������
+        gcIter->goToNext();
     }
+}
 
-    // Тест 10: Поиск элемента по значению
-    void testFindByValue() {
-        std::cout << "\n=== Тест 10: Поиск элемента по значению ===\n";
-        std::cout << "Ожидается: Элемент успешно найден по значению\n";
-
-        // Сначала добавим несколько элементов
-        table->clear();
-
-        std::string key1 = "имя";
-        std::string value1 = "Иван";
-        std::string key2 = "фамилия";
-        std::string value2 = "Иванов";
-        std::string key3 = "возраст";
-        std::string value3 = "25";
-
-        table->insertByKey(
-            (void*)key1.c_str(), key1.size() + 1,
-            (void*)value1.c_str(), value1.size() + 1
-        );
-
-        table->insertByKey(
-            (void*)key2.c_str(), key2.size() + 1,
-            (void*)value2.c_str(), value2.size() + 1
-        );
-
-        table->insertByKey(
-            (void*)key3.c_str(), key3.size() + 1,
-            (void*)value3.c_str(), value3.size() + 1
-        );
-
-        // Теперь ищем элемент по значению
-        std::string searchValue = "Иванов";
-        Container::Iterator* iter = table->find(
-            (void*)searchValue.c_str(), searchValue.size() + 1
-        );
-
-        bool found = (iter != nullptr);
-        std::cout << "Поиск значения '" << searchValue << "': "
-            << (found ? "найдено" : "не найдено") << "\n";
-
-        if (found) {
-            // Получаем значение из итератора и проверяем, совпадает ли оно с искомым
-            size_t valueSize;
-            void* foundValue = iter->getElement(valueSize);
-            std::string foundValueStr = valueToString(foundValue, valueSize);
-
-            std::cout << "Найденное значение: '" << foundValueStr << "'\n";
-
-            bool valueCorrect = (foundValueStr == searchValue);
-            std::cout << "Тест " << (valueCorrect ? "УСПЕШЕН" : "ПРОВАЛЕН") << "\n";
-
-            delete iter;
-        }
-        else {
-            std::cout << "Тест ПРОВАЛЕН\n";
+// ������� ����� ����������
+void GroupContainer::clear() {
+    for (size_t i = 0; i < arraySize; i++) {
+        if (hashTable[i]) {
+            clearBucket(i);
+            delete hashTable[i];
+            hashTable[i] = nullptr;
         }
     }
-
-    // Запуск всех тестов
-    void runAllTests() {
-        std::cout << "======= НАЧАЛО ТЕСТИРОВАНИЯ АССОЦИАТИВНОЙ ТАБЛИЦЫ =======\n";
-        testEmptyTable();
-        testInsert();
-        testRetrieve();
-        testNonExistentKey();
-        testDuplicateKey();
-        testRemove();
-        testIteration();
-        testClear();
-        testStress();
-        testFindByValue();
-        std::cout << "======= ОКОНЧАНИЕ ТЕСТИРОВАНИЯ АССОЦИАТИВНОЙ ТАБЛИЦЫ =======\n";
-    }
-};
-
-int main() {
-    setlocale(LC_ALL, "Russian");
-
-    std::cout << "=== Тестирование класса Table (Ассоциативная таблица) ===\n";
-
-    // Создаем тестировщик с 2МБ памяти
-    TableTester tester(2 * 1024 * 1024);
-
-    // Запускаем все тесты
-    tester.runAllTests();
-
-    std::cout << "\nТестирование завершено.\n";
-
-    return 0;
+    amountOfElements = 0;
 }

@@ -1,89 +1,87 @@
 #include "Table.h"
-#include <cstring> // для memcmp
+#include <sstream>
+#include <cstring>
 
-// Конструктор таблицы
-Table::Table(MemoryManager& mem)
-    : AbstractTable(mem), GroupContainer(mem)
-{
-    // Все необходимые действия уже выполнены в конструкторах базовых классов
+// Максимальный коэффициент загрузки, при превышении которого происходит перехеширование
+const double Table::MAX_LOAD_FACTOR = 0.75;
+
+// Конструктор
+Table::Table(MemoryManager& mem) : AbstractTable(mem) {
+    // Базовая инициализация выполняется в конструкторе GroupContainer
 }
 
-// Деструктор таблицы
-Table::~Table()
-{
-    clear(); // Очищаем таблицу
-    // Освобождение памяти для массива выполняется в деструкторе GroupContainer
+// Деструктор
+Table::~Table() {
+    // Очистка памяти происходит в деструкторе GroupContainer и clear()
+    clear();
 }
 
-// Преобразование ключа в строку для хеширования
-std::string Table::keyToString(void* key, size_t keySize)
-{
-    if (!key || keySize == 0)
-        return "";
+// Конвертация ключа в строковое представление для хеширования
+std::string Table::keyToString(void* key, size_t keySize) {
+    std::stringstream ss;
+    unsigned char* keyBytes = static_cast<unsigned char*>(key);
 
-    // Преобразуем ключ в строку
-    char* keyPtr = static_cast<char*>(key);
-    // Преобразуем в std::string (не включая нулевой символ в конце, если он есть)
-    return std::string(keyPtr, keySize - 1);
+    for (size_t i = 0; i < keySize; i++) {
+        ss << keyBytes[i];
+    }
+
+    return ss.str();
 }
 
-// Перехеширование таблицы (увеличение размера)
-bool Table::reHash()
-{
-    size_t oldSize = arraySize;
-    size_t newSize = arraySize * 2;
-
+// Перехеширование таблицы при превышении коэффициента загрузки
+bool Table::reHash() {
     // Сохраняем старую таблицу
-    List** oldTable = hashTable;
+    size_t oldSize = getArraySize();
+    List** oldTable = getTable();
 
-    // Создаем новую таблицу
-    hashTable = (List**)_memory.allocMem(sizeof(List*) * newSize);
-    if (!hashTable) {
-        hashTable = oldTable;  // Восстанавливаем старую таблицу
-        return false;
+    // Создаем новую таблицу вдвое большего размера
+    size_t newSize = oldSize * 2;
+    List** newTable = (List**)_memory.allocMem(sizeof(List*) * newSize);
+
+    if (!newTable) {
+        return false; // Не удалось выделить память
     }
 
     // Инициализируем новую таблицу
     for (size_t i = 0; i < newSize; i++) {
-        hashTable[i] = nullptr;
+        newTable[i] = nullptr;
     }
 
-    // Обновляем размер массива
+    // Временно меняем указатель и размер
+    List** tempTable = hashTable;
+    hashTable = newTable;
+    size_t tempSize = arraySize;
     arraySize = newSize;
 
-    // Сбрасываем счетчик элементов (будем заново считать при перехешировании)
+    // Сбрасываем счетчик элементов
+    int oldCount = amountOfElements;
     amountOfElements = 0;
 
-    // Перехешируем элементы из старой таблицы
+    // Переносим элементы из старой таблицы в новую
     for (size_t i = 0; i < oldSize; i++) {
         if (oldTable[i]) {
             Container::Iterator* iter = oldTable[i]->newIterator();
+
             if (iter) {
-                while (true) {
+                do {
                     size_t elemSize;
-                    KeyValuePair* pair = static_cast<KeyValuePair*>(iter->getElement(elemSize));
+                    kv_pair* pair = (kv_pair*)iter->getElement(elemSize);
 
                     if (pair) {
-                        // Вычисляем новый хеш и вставляем элемент
-                        std::string keyStr = keyToString(pair->key, pair->keySize);
-                        size_t hash = hashFunc(keyStr) % arraySize;
+                        // Добавляем пару в новую таблицу
+                        insertByKey(pair->key, pair->keySize, pair->value, pair->valueSize);
 
-                        // Если в данной позиции еще нет списка, создаем его
-                        if (!hashTable[hash]) {
-                            hashTable[hash] = new List(_memory);
-                        }
-
-                        // Вставляем пару в список
-                        if (hashTable[hash]->push_front(pair, sizeof(KeyValuePair)) == 0) {
-                            increaseAmount();
-                        }
+                        // Освобождаем память пары в старой таблице
+                        _memory.freeMem(pair->key);
+                        _memory.freeMem(pair->value);
                     }
 
-                    if (!iter->hasNext())
+                    if (!iter->hasNext()) {
                         break;
+                    }
 
                     iter->goToNext();
-                }
+                } while (true);
 
                 delete iter;
             }
@@ -93,326 +91,275 @@ bool Table::reHash()
         }
     }
 
-    // Освобождаем память, выделенную для старой таблицы
+    // Освобождаем память старой таблицы
     _memory.freeMem(oldTable);
+
+    // Проверяем, что количество элементов не изменилось
+    if (amountOfElements != oldCount) {
+        // Что-то пошло не так при перехешировании
+        return false;
+    }
 
     return true;
 }
 
-// Вставка элемента по ключу
-int Table::insertByKey(void* key, size_t keySize, void* value, size_t valueSize)
-{
-    // Проверяем, существует ли уже элемент с таким ключом
-    size_t bucketIndex;
-    if (findPairByKey(key, keySize, bucketIndex) != nullptr)
-    {
-        // Ключ уже существует, возвращаем ошибку
-        return 1;
+// Освобождение памяти элемента (пары ключ-значение)
+void Table::removeElement(void* element, size_t elemSize) {
+    if (!element) return;
+
+    kv_pair* pair = (kv_pair*)element;
+
+    // Освобождаем память ключа и значения
+    if (pair->key) {
+        _memory.freeMem(pair->key);
     }
 
-    // Вычисляем хеш ключа
+    if (pair->value) {
+        _memory.freeMem(pair->value);
+    }
+}
+
+// Очистка элементов в корзине
+void Table::clearBucket(size_t bucketIndex) {
+    if (!hashTable || bucketIndex >= arraySize || !hashTable[bucketIndex]) {
+        return;
+    }
+
+    List* bucket = hashTable[bucketIndex];
+    Container::Iterator* iter = bucket->newIterator();
+
+    if (iter) {
+        do {
+            size_t elemSize;
+            kv_pair* pair = (kv_pair*)iter->getElement(elemSize);
+
+            if (pair) {
+                // Освобождаем память ключа и значения
+                _memory.freeMem(pair->key);
+                _memory.freeMem(pair->value);
+            }
+
+            if (!iter->hasNext()) {
+                break;
+            }
+
+            iter->goToNext();
+        } while (true);
+
+        delete iter;
+    }
+}
+
+// Вставка элемента по ключу
+int Table::insertByKey(void* key, size_t keySize, void* elem, size_t elemSize) {
+    // Проверяем, существует ли уже элемент с таким ключом
+    if (findByKey(key, keySize) != nullptr) {
+        return 1; // Элемент с таким ключом уже существует
+    }
+
+    // Проверяем необходимость перехеширования
+    if (getLoadFactor() >= MAX_LOAD_FACTOR) {
+        reHash();
+    }
+
+    // Вычисляем хеш для ключа
     std::string keyStr = keyToString(key, keySize);
     size_t hash = hashFunc(keyStr) % arraySize;
 
-    // Если нагрузка превышает порог, увеличиваем размер таблицы
-    if (getLoadFactor() > 0.75) {
-        reHash();
-        // Пересчитываем хеш после изменения размера таблицы
-        hash = hashFunc(keyStr) % arraySize;
-    }
-
-    // Если в данной позиции еще нет списка, создаем его
+    // Если корзина еще не создана, создаем ее
     if (!hashTable[hash]) {
         hashTable[hash] = new List(_memory);
     }
 
-    // Создаем пару ключ-значение
-    KeyValuePair pair;
+    // Создаем новую пару ключ-значение
+    kv_pair* pair = (kv_pair*)_memory.allocMem(sizeof(kv_pair));
 
-    // Выделяем память для ключа и значения
-    pair.key = _memory.allocMem(keySize);
-    if (!pair.key) {
-        return 1; // Ошибка выделения памяти
-    }
+    // Выделяем память и копируем ключ
+    pair->key = _memory.allocMem(keySize);
+    memcpy(pair->key, key, keySize);
+    pair->keySize = keySize;
 
-    pair.keySize = keySize;
-
-    pair.value = _memory.allocMem(valueSize);
-    if (!pair.value) {
-        _memory.freeMem(pair.key);
-        return 1;
-    }
-
-    pair.valueSize = valueSize;
-
-    // Копируем данные ключа и значения
-    memcpy(pair.key, key, keySize);
-    memcpy(pair.value, value, valueSize);
+    // Выделяем память и копируем значение
+    pair->value = _memory.allocMem(elemSize);
+    memcpy(pair->value, elem, elemSize);
+    pair->valueSize = elemSize;
 
     // Добавляем пару в список
-    int result = hashTable[hash]->push_front(&pair, sizeof(KeyValuePair));
+    int result = hashTable[hash]->push_front(pair, sizeof(kv_pair));
 
-    // Проверяем результат операции
-    if (result != 0) {
-        // Если произошла ошибка, освобождаем выделенную память
-        _memory.freeMem(pair.key);
-        _memory.freeMem(pair.value);
+    // Если добавление прошло успешно, увеличиваем счетчик элементов
+    if (result == 0) {
+        increaseAmount();
     }
     else {
-        // Увеличиваем счетчик элементов
-        increaseAmount();
+        // В случае неудачи освобождаем память
+        _memory.freeMem(pair->key);
+        _memory.freeMem(pair->value);
+        _memory.freeMem(pair);
     }
 
     return result;
 }
 
+// Удаление элемента по ключу
+void Table::removeByKey(void* key, size_t keySize) {
+    // Находим элемент по ключу
+    Iterator* iter = findByKey(key, keySize);
+
+    if (iter != nullptr) {
+        // Удаляем элемент с помощью родительского метода
+        remove(iter);
+        delete iter;
+    }
+}
+
+// Поиск элемента по ключу
+Container::Iterator* Table::findByKey(void* key, size_t keySize) {
+    if (!key || keySize == 0) {
+        return nullptr;
+    }
+
+    // Вычисляем хеш для ключа
+    std::string keyStr = keyToString(key, keySize);
+    size_t hash = hashFunc(keyStr) % arraySize;
+
+    // Если корзина пуста, возвращаем nullptr
+    if (!hashTable[hash]) {
+        return nullptr;
+    }
+
+    // Получаем итератор для списка
+    Container::Iterator* iter = hashTable[hash]->newIterator();
+
+    if (!iter) {
+        return nullptr;
+    }
+
+    // Ищем элемент с заданным ключом
+    do {
+        size_t elemSize;
+        kv_pair* pair = (kv_pair*)iter->getElement(elemSize);
+
+        if (pair && pair->keySize == keySize && memcmp(pair->key, key, keySize) == 0) {
+            // Нашли элемент, создаем итератор таблицы
+            TableIterator* tableIter = new TableIterator(this, hash);
+            delete iter;
+            return tableIter;
+        }
+
+        if (!iter->hasNext()) {
+            break;
+        }
+
+        iter->goToNext();
+    } while (true);
+
+    delete iter;
+    return nullptr;
+}
+
 // Получение значения по ключу
-void* Table::at(void* key, size_t keySize, size_t& valueSize)
-{
-    size_t bucketIndex;
-    Container::Iterator* iter = findPairByKey(key, keySize, bucketIndex);
-    if (!iter)
-    {
-        // Ключ не найден
+void* Table::at(void* key, size_t keySize, size_t& valueSize) {
+    // Находим элемент по ключу
+    Iterator* iter = findByKey(key, keySize);
+
+    if (!iter) {
         valueSize = 0;
         return nullptr;
     }
 
     // Получаем пару ключ-значение
-    size_t pairSize;
-    KeyValuePair* pair = static_cast<KeyValuePair*>(iter->getElement(pairSize));
+    size_t elemSize;
+    kv_pair* pair = (kv_pair*)iter->getElement(elemSize);
 
-    // Сохраняем размер значения
+    if (!pair) {
+        delete iter;
+        valueSize = 0;
+        return nullptr;
+    }
+
+    // Устанавливаем размер значения
     valueSize = pair->valueSize;
-
-    // Сохраняем указатель на значение
     void* result = pair->value;
 
-    // Удаляем итератор
     delete iter;
-
-    // Возвращаем указатель на значение
     return result;
 }
 
-// Удаление элемента по ключу
-void Table::removeByKey(void* key, size_t keySize)
-{
-    size_t bucketIndex;
-    Container::Iterator* iter = findPairByKey(key, keySize, bucketIndex);
-    if (!iter)
-    {
-        // Ключ не найден
-        return;
-    }
-
-    // Получаем пару ключ-значение для освобождения памяти
-    size_t pairSize;
-    KeyValuePair* pair = static_cast<KeyValuePair*>(iter->getElement(pairSize));
-
-    // Освобождаем память для ключа и значения
-    _memory.freeMem(pair->key);
-    _memory.freeMem(pair->value);
-
-    // Удаляем элемент из списка
-    hashTable[bucketIndex]->remove(iter);
-
-    // Уменьшаем счетчик элементов
-    decreaseAmount();
-
-    // Если список стал пустым, удаляем его
-    if (hashTable[bucketIndex]->empty()) {
-        delete hashTable[bucketIndex];
-        hashTable[bucketIndex] = nullptr;
-    }
-
-    // Итератор уже удален в hashTable[bucketIndex]->remove(iter)
-}
-
-// Поиск пары ключ-значение по ключу
-Container::Iterator* Table::findPairByKey(void* key, size_t keySize, size_t& bucketIndex)
-{
-    // Вычисляем хеш ключа
-    std::string keyStr = keyToString(key, keySize);
-    size_t hash = hashFunc(keyStr) % arraySize;
-    bucketIndex = hash;
-
-    // Проверяем, есть ли список в данной позиции
-    if (!hashTable[hash])
-    {
-        // Список пуст
-        return nullptr;
-    }
-
-    // Создаем итератор для списка
-    Container::Iterator* iter = hashTable[hash]->newIterator();
-    if (!iter)
-    {
-        // Не удалось создать итератор
-        return nullptr;
-    }
-
-    // Обходим список и ищем пару с указанным ключом
-    while (true)
-    {
-        size_t pairSize;
-        KeyValuePair* pair = static_cast<KeyValuePair*>(iter->getElement(pairSize));
-
-        if (!pair)
-        {
-            // Неожиданная ошибка
-            delete iter;
-            return nullptr;
-        }
-
-        // Сравниваем ключи
-        if (pair->keySize == keySize && memcmp(pair->key, key, keySize) == 0)
-        {
-            // Ключ найден
-            return iter;
-        }
-
-        // Переходим к следующему элементу
-        if (iter->hasNext())
-        {
-            iter->goToNext();
-        }
-        else
-        {
-            // Достигнут конец списка, ключ не найден
-            delete iter;
-            return nullptr;
-        }
-    }
-}
-
-// Реализация метода findByKey из AbstractTable
-Container::Iterator* Table::findByKey(void* key, size_t keySize)
-{
-    size_t bucketIndex;
-    Container::Iterator* iter = findPairByKey(key, keySize, bucketIndex);
-    if (!iter)
-    {
-        return nullptr;
-    }
-
-    // Создаем итератор таблицы, который начинается с найденного элемента
-    TableIterator* tableIter = new TableIterator(this, bucketIndex);
-
-    // Удаляем исходный итератор, так как мы создали новый
-    delete iter;
-
-    return tableIter;
-}
-
 // Поиск элемента по значению
-Container::Iterator* Table::find(void* elem, size_t size)
-{
-    // Перебираем все списки и ищем значение
+Container::Iterator* Table::find(void* elem, size_t size) {
+    if (!elem || size == 0) {
+        return nullptr;
+    }
+
+    // Проходим по всем корзинам
     for (size_t i = 0; i < arraySize; i++) {
-        if (hashTable[i]) {
-            Container::Iterator* iter = hashTable[i]->newIterator();
-            if (iter) {
-                while (true) {
-                    size_t pairSize;
-                    KeyValuePair* pair = static_cast<KeyValuePair*>(iter->getElement(pairSize));
-
-                    if (pair && pair->valueSize == size && memcmp(pair->value, elem, size) == 0) {
-                        // Значение найдено
-                        // Создаем итератор таблицы, который начинается с найденного элемента
-                        TableIterator* tableIter = new TableIterator(this, i);
-
-                        // Удаляем исходный итератор, так как мы создали новый
-                        delete iter;
-
-                        return tableIter;
-                    }
-
-                    if (!iter->hasNext())
-                        break;
-
-                    iter->goToNext();
-                }
-
-                delete iter;
-            }
+        if (!hashTable[i]) {
+            continue;
         }
+
+        // Получаем итератор для списка
+        Container::Iterator* iter = hashTable[i]->newIterator();
+
+        if (!iter) {
+            continue;
+        }
+
+        // Ищем элемент с заданным значением
+        do {
+            size_t elemSize;
+            kv_pair* pair = (kv_pair*)iter->getElement(elemSize);
+
+            if (pair && pair->valueSize == size && memcmp(pair->value, elem, size) == 0) {
+                // Нашли элемент, создаем итератор таблицы
+                TableIterator* tableIter = new TableIterator(this, i);
+                delete iter;
+                return tableIter;
+            }
+
+            if (!iter->hasNext()) {
+                break;
+            }
+
+            iter->goToNext();
+        } while (true);
+
+        delete iter;
     }
 
     return nullptr;
 }
 
-// Создание нового итератора
-Container::Iterator* Table::newIterator()
-{
-    if (empty())
-        return nullptr;
-
-    return new TableIterator(this);
-}
-
-// Метод для удаления элемента (освобождение памяти ключа и значения)
-void Table::removeElement(void* element, size_t elemSize)
-{
-    if (!element || elemSize != sizeof(KeyValuePair))
-        return;
-
-    KeyValuePair* pair = static_cast<KeyValuePair*>(element);
-    _memory.freeMem(pair->key);
-    _memory.freeMem(pair->value);
-}
-
-// Метод для очистки всех элементов в одной корзине
-void Table::clearBucket(size_t bucketIndex)
-{
-    if (bucketIndex >= arraySize || !hashTable[bucketIndex])
-        return;
-
-    Container::Iterator* iter = hashTable[bucketIndex]->newIterator();
-    if (iter) {
-        while (true) {
-            size_t pairSize;
-            KeyValuePair* pair = static_cast<KeyValuePair*>(iter->getElement(pairSize));
-
-            if (pair) {
-                // Освобождаем память для ключа и значения
-                _memory.freeMem(pair->key);
-                _memory.freeMem(pair->value);
-            }
-
-            if (!iter->hasNext())
-                break;
-
-            iter->goToNext();
-        }
-        delete iter;
-    }
-}
-
-// Реализация итератора таблицы
-
 // Конструктор итератора таблицы
-Table::TableIterator::TableIterator(GroupContainer* container, size_t startIndex)
-    : GroupContainerIterator(container, startIndex)
+Table::TableIterator::TableIterator(Table* table, size_t startIndex)
+    : GroupContainer::GroupContainerIterator(table, startIndex)
 {
 }
 
-// Переопределяем getElement, чтобы возвращать только значение
-void* Table::TableIterator::getElement(size_t& size)
-{
-    if (!currentList || !listIterator) {
-        size = 0;
-        return nullptr;
-    }
+// Получение значения (без ключа)
+void* Table::TableIterator::getValue(size_t& size) {
+    size_t elemSize;
+    kv_pair* pair = (kv_pair*)getElement(elemSize);
 
-    size_t pairSize;
-    KeyValuePair* pair = static_cast<KeyValuePair*>(listIterator->getElement(pairSize));
     if (!pair) {
         size = 0;
         return nullptr;
     }
 
-    // Возвращаем значение и его размер
     size = pair->valueSize;
     return pair->value;
+}
+
+// Получение ключа
+void* Table::TableIterator::getKey(size_t& size) {
+    size_t elemSize;
+    kv_pair* pair = (kv_pair*)getElement(elemSize);
+
+    if (!pair) {
+        size = 0;
+        return nullptr;
+    }
+
+    size = pair->keySize;
+    return pair->key;
 }

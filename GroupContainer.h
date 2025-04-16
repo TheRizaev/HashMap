@@ -13,54 +13,33 @@ protected:
     List** hashTable;
 
     // Получение коэффициента загрузки хеш-таблицы
-    double getLoadFactor() {
-        if (arraySize == 0) return 0.0;
-        return static_cast<double>(amountOfElements) / arraySize;
-    }
+    double getLoadFactor();
 
     // Изменение счетчика элементов
-    void increaseAmount() { amountOfElements++; }
-    void decreaseAmount() { if (amountOfElements > 0) amountOfElements--; }
+    void increaseAmount();
+    void decreaseAmount();
 
     // Перехеширование - увеличение размера таблицы и перераспределение элементов
     virtual bool reHash() = 0;
 
     // Хеш-функция для ключа (строкового представления данных)
-    size_t hashFunc(const std::string& key) {
-        size_t hash = 0;
-        for (char c : key) {
-            hash = hash * 31 + c;
-        }
-        return hash;
-    }
+    size_t hashFunc(const std::string& key);
 
     // Доступ к внутренним данным
-    size_t getArraySize() const { return arraySize; }
-    List** getTable() const { return hashTable; }
+    size_t getArraySize() const;
+    List** getTable() const;
 
 public:
     // Конструктор
-    GroupContainer(MemoryManager& mem) : Container(mem) {
-        amountOfElements = 0;
-        arraySize = 1000;
-        hashTable = (List**)_memory.allocMem(sizeof(List*) * arraySize);
-        for (size_t i = 0; i < arraySize; i++) {
-            hashTable[i] = nullptr;
-        }
-    }
+    GroupContainer(MemoryManager& mem);
 
     // Деструктор
-    virtual ~GroupContainer() {
-        if (hashTable) {
-            _memory.freeMem(hashTable);
-            hashTable = nullptr;
-        }
-    }
+    virtual ~GroupContainer();
 
     // Методы из базового класса Container
-    bool empty() override { return amountOfElements == 0; }
-    int size() override { return amountOfElements; }
-    size_t max_bytes() override { return arraySize * sizeof(List*); }
+    bool empty() override;
+    int size() override;
+    size_t max_bytes() override;
 
     // Общий итератор для всех групповых контейнеров
     class GroupContainerIterator : public Iterator {
@@ -72,173 +51,34 @@ public:
 
     public:
         // Конструктор
-        GroupContainerIterator(GroupContainer* container, size_t startIndex = 0)
-            : myContainer(container), index(startIndex), currentList(nullptr), listIterator(nullptr)
-        {
-            if (!myContainer || !myContainer->hashTable)
-                return;
-
-            // Находим первый непустой список
-            for (size_t i = startIndex; i < myContainer->arraySize; i++) {
-                if (myContainer->hashTable[i]) {
-                    currentList = myContainer->hashTable[i];
-                    listIterator = currentList->newIterator();
-                    index = i;
-                    break;
-                }
-            }
-        }
+        GroupContainerIterator(GroupContainer* container, size_t startIndex = 0);
 
         // Деструктор
-        ~GroupContainerIterator() {
-            if (listIterator) {
-                delete listIterator;
-                listIterator = nullptr;
-            }
-        }
+        ~GroupContainerIterator();
 
         // Получение текущего элемента
-        void* getElement(size_t& size) override {
-            if (!currentList || !listIterator) {
-                size = 0;
-                return nullptr;
-            }
-            return listIterator->getElement(size);
-        }
+        void* getElement(size_t& size) override;
 
         // Проверка наличия следующего элемента
-        bool hasNext() override {
-            if (!myContainer || !myContainer->hashTable)
-                return false;
-
-            // Если текущий список есть и в нем есть следующий элемент
-            if (currentList && listIterator && listIterator->hasNext())
-                return true;
-
-            // Ищем следующий непустой список
-            for (size_t i = index + 1; i < myContainer->arraySize; i++) {
-                if (myContainer->hashTable[i])
-                    return true;
-            }
-
-            return false;
-        }
+        bool hasNext() override;
 
         // Переход к следующему элементу
-        void goToNext() override {
-            if (!myContainer || !myContainer->hashTable)
-                return;
-
-            // Если в текущем списке есть следующий элемент
-            if (currentList && listIterator && listIterator->hasNext()) {
-                listIterator->goToNext();
-                return;
-            }
-
-            // Освобождаем текущий итератор
-            if (listIterator) {
-                delete listIterator;
-                listIterator = nullptr;
-            }
-
-            // Ищем следующий непустой список
-            for (size_t i = index + 1; i < myContainer->arraySize; i++) {
-                if (myContainer->hashTable[i]) {
-                    currentList = myContainer->hashTable[i];
-                    listIterator = currentList->newIterator();
-                    index = i;
-                    return;
-                }
-            }
-
-            // Если не нашли следующий список
-            currentList = nullptr;
-        }
+        void goToNext() override;
 
         // Сравнение итераторов
-        bool equals(Iterator* right) override {
-            if (!right)
-                return false;
-
-            GroupContainerIterator* rightIter = dynamic_cast<GroupContainerIterator*>(right);
-            if (!rightIter)
-                return false;
-
-            // Сравниваем указатели на контейнер и индекс
-            if (myContainer != rightIter->myContainer || index != rightIter->index)
-                return false;
-
-            // Если оба итератора указывают на конец (нет текущего списка)
-            if (!currentList && !rightIter->currentList)
-                return true;
-
-            // Если один из итераторов указывает на конец
-            if (!currentList || !rightIter->currentList)
-                return false;
-
-            // Сравниваем итераторы списка
-            if (!listIterator || !rightIter->listIterator)
-                return false;
-
-            return listIterator->equals(rightIter->listIterator);
-        }
+        bool equals(Iterator* right) override;
 
         friend class GroupContainer;
     };
 
     // Создание нового итератора
-    virtual Iterator* newIterator() override {
-        if (empty())
-            return nullptr;
-        return new GroupContainerIterator(this);
-    }
+    virtual Iterator* newIterator() override;
 
     // Удаление элемента по итератору
-    virtual void remove(Iterator* iter) override {
-        if (!iter) return;
-
-        GroupContainerIterator* gcIter = dynamic_cast<GroupContainerIterator*>(iter);
-        if (!gcIter || !gcIter->currentList || !gcIter->listIterator) return;
-
-        // Удаляем элемент из списка
-        size_t elemSize;
-        void* element = gcIter->listIterator->getElement(elemSize);
-        if (element) {
-            // Удаляем данные элемента (специфично для каждого контейнера)
-            removeElement(element, elemSize);
-
-            // Удаляем элемент из списка
-            gcIter->currentList->remove(gcIter->listIterator);
-
-            // Уменьшаем счетчик элементов
-            decreaseAmount();
-
-            // Если список стал пустым, удаляем его
-            if (gcIter->currentList->empty()) {
-                delete gcIter->currentList;
-                hashTable[gcIter->index] = nullptr;
-                gcIter->currentList = nullptr;
-            }
-
-            // Обнуляем указатель на итератор списка
-            gcIter->listIterator = nullptr;
-
-            // Переходим к следующему элементу
-            gcIter->goToNext();
-        }
-    }
+    virtual void remove(Iterator* iter) override;
 
     // Очистка всего контейнера
-    void clear() override {
-        for (size_t i = 0; i < arraySize; i++) {
-            if (hashTable[i]) {
-                clearBucket(i);
-                delete hashTable[i];
-                hashTable[i] = nullptr;
-            }
-        }
-        amountOfElements = 0;
-    }
+    void clear() override;
 
 protected:
     // Метод для освобождения памяти элемента (должен быть переопределен в потомках)
