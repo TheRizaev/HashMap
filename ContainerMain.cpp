@@ -1,232 +1,346 @@
-#include "GroupContainer.h"
+#include <iostream>
+#include <cstring>
 #include <string>
+#include "Table.h"
+#include "Mem.h"
+#include <locale.h>
 
-// Конструктор
-GroupContainer::GroupContainer(MemoryManager& mem) : Container(mem) {
-    amountOfElements = 0;
-    arraySize = 1000;
-    hashTable = (List**)_memory.allocMem(sizeof(List*) * arraySize);
-    for (size_t i = 0; i < arraySize; i++) {
-        hashTable[i] = nullptr;
-    }
-}
-
-// Деструктор
-GroupContainer::~GroupContainer() {
-    if (hashTable) {
-        _memory.freeMem(hashTable);
-        hashTable = nullptr;
-    }
-}
-
-// Получение коэффициента загрузки хеш-таблицы
-double GroupContainer::getLoadFactor() {
-    if (arraySize == 0) return 0.0;
-    return static_cast<double>(amountOfElements) / arraySize;
-}
-
-// Изменение счетчика элементов
-void GroupContainer::increaseAmount() {
-    amountOfElements++;
-}
-
-void GroupContainer::decreaseAmount() {
-    if (amountOfElements > 0) amountOfElements--;
-}
-
-// Хеш-функция для ключа (строкового представления данных)
-size_t GroupContainer::hashFunc(const std::string& key) {
-    size_t hash = 0;
-    for (char c : key) {
-        hash = hash * 31 + c;
-    }
-    return hash;
-}
-
-// Доступ к внутренним данным
-size_t GroupContainer::getArraySize() const {
-    return arraySize;
-}
-
-List** GroupContainer::getTable() const {
-    return hashTable;
-}
-
-// Методы из базового класса Container
-bool GroupContainer::empty() {
-    return amountOfElements == 0;
-}
-
-int GroupContainer::size() {
-    return amountOfElements;
-}
-
-size_t GroupContainer::max_bytes() {
-    return arraySize * sizeof(List*);
-}
-
-// Конструктор итератора
-GroupContainer::GroupContainerIterator::GroupContainerIterator(GroupContainer* container, size_t startIndex)
-    : myContainer(container), index(startIndex), currentList(nullptr), listIterator(nullptr)
+// Класс для тестирования контейнеров
+class ContainerTester
 {
-    if (!myContainer || !myContainer->hashTable)
-        return;
+public:
+    // Тестирование контейнера с целыми числами
+    template <typename ContainerType>
+    static void testIntContainer(const char* containerName)
+    {
+        std::cout << "\n=== Тестирование " << containerName << " с целыми числами ===\n" << std::endl;
 
-    // Находим первый непустой список
-    for (size_t i = startIndex; i < myContainer->arraySize; i++) {
-        if (myContainer->hashTable[i]) {
-            currentList = myContainer->hashTable[i];
-            listIterator = currentList->newIterator();
-            index = i;
-            break;
-        }
-    }
-}
+        // Создаем менеджер памяти
+        Mem memory(10000);
 
-// Деструктор итератора
-GroupContainer::GroupContainerIterator::~GroupContainerIterator() {
-    if (listIterator) {
-        delete listIterator;
-        listIterator = nullptr;
-    }
-}
+        // Создаем контейнер
+        ContainerType container(memory);
 
-// Получение текущего элемента
-void* GroupContainer::GroupContainerIterator::getElement(size_t& size) {
-    if (!currentList || !listIterator) {
-        size = 0;
-        return nullptr;
-    }
-    return listIterator->getElement(size);
-}
+        // Тестируем пустой контейнер
+        std::cout << "Пустой " << containerName << ": " << (container.empty() ? "да" : "нет") << std::endl;
+        std::cout << "Размер " << containerName << ": " << container.size() << std::endl;
 
-// Проверка наличия следующего элемента
-bool GroupContainer::GroupContainerIterator::hasNext() {
-    if (!myContainer || !myContainer->hashTable)
-        return false;
+        // Добавляем элементы
+        int keys[] = { 1, 2, 3, 4, 5 };
+        int values[] = { 10, 20, 30, 40, 50 };
 
-    // Если текущий список есть и в нем есть следующий элемент
-    if (currentList && listIterator && listIterator->hasNext())
-        return true;
-
-    // Ищем следующий непустой список
-    for (size_t i = index + 1; i < myContainer->arraySize; i++) {
-        if (myContainer->hashTable[i])
-            return true;
-    }
-
-    return false;
-}
-
-// Переход к следующему элементу
-void GroupContainer::GroupContainerIterator::goToNext() {
-    if (!myContainer || !myContainer->hashTable)
-        return;
-
-    // Если в текущем списке есть следующий элемент
-    if (currentList && listIterator && listIterator->hasNext()) {
-        listIterator->goToNext();
-        return;
-    }
-
-    // Освобождаем текущий итератор
-    if (listIterator) {
-        delete listIterator;
-        listIterator = nullptr;
-    }
-
-    // Ищем следующий непустой список
-    for (size_t i = index + 1; i < myContainer->arraySize; i++) {
-        if (myContainer->hashTable[i]) {
-            currentList = myContainer->hashTable[i];
-            listIterator = currentList->newIterator();
-            index = i;
-            return;
-        }
-    }
-
-    // Если не нашли следующий список
-    currentList = nullptr;
-}
-
-// Сравнение итераторов
-bool GroupContainer::GroupContainerIterator::equals(Iterator* right) {
-    if (!right)
-        return false;
-
-    GroupContainerIterator* rightIter = dynamic_cast<GroupContainerIterator*>(right);
-    if (!rightIter)
-        return false;
-
-    // Сравниваем указатели на контейнер и индекс
-    if (myContainer != rightIter->myContainer || index != rightIter->index)
-        return false;
-
-    // Если оба итератора указывают на конец (нет текущего списка)
-    if (!currentList && !rightIter->currentList)
-        return true;
-
-    // Если один из итераторов указывает на конец
-    if (!currentList || !rightIter->currentList)
-        return false;
-
-    // Сравниваем итераторы списка
-    if (!listIterator || !rightIter->listIterator)
-        return false;
-
-    return listIterator->equals(rightIter->listIterator);
-}
-
-// Создание нового итератора
-Iterator* GroupContainer::newIterator() {
-    if (empty())
-        return nullptr;
-    return new GroupContainerIterator(this);
-}
-
-// Удаление элемента по итератору
-void GroupContainer::remove(Iterator* iter) {
-    if (!iter) return;
-
-    GroupContainerIterator* gcIter = dynamic_cast<GroupContainerIterator*>(iter);
-    if (!gcIter || !gcIter->currentList || !gcIter->listIterator) return;
-
-    // Удаляем элемент из списка
-    size_t elemSize;
-    void* element = gcIter->listIterator->getElement(elemSize);
-    if (element) {
-        // Удаляем данные элемента (специфично для каждого контейнера)
-        removeElement(element, elemSize);
-
-        // Удаляем элемент из списка
-        gcIter->currentList->remove(gcIter->listIterator);
-
-        // Уменьшаем счетчик элементов
-        decreaseAmount();
-
-        // Если список стал пустым, удаляем его
-        if (gcIter->currentList->empty()) {
-            delete gcIter->currentList;
-            hashTable[gcIter->index] = nullptr;
-            gcIter->currentList = nullptr;
+        for (int i = 0; i < 5; i++)
+        {
+            int result = container.insertByKey(&keys[i], sizeof(int), &values[i], sizeof(int));
+            std::cout << "Добавление ключа " << keys[i] << ", значения " << values[i]
+                << ": " << (result == 0 ? "успешно" : "ошибка") << std::endl;
         }
 
-        // Обнуляем указатель на итератор списка
-        gcIter->listIterator = nullptr;
+        // Проверяем размер
+        std::cout << "Размер " << containerName << " после добавления: " << container.size() << std::endl;
+        std::cout << containerName << " пуст? " << (container.empty() ? "да" : "нет") << std::endl;
 
-        // Переходим к следующему элементу
-        gcIter->goToNext();
-    }
-}
+        // Получаем значения по ключу
+        for (int i = 0; i < 5; i++)
+        {
+            size_t valueSize;
+            int* value = (int*)container.at(&keys[i], sizeof(int), valueSize);
 
-// Очистка всего контейнера
-void GroupContainer::clear() {
-    for (size_t i = 0; i < arraySize; i++) {
-        if (hashTable[i]) {
-            clearBucket(i);
-            delete hashTable[i];
-            hashTable[i] = nullptr;
+            if (value != nullptr)
+            {
+                std::cout << "Значение для ключа " << keys[i] << ": " << *value << std::endl;
+            }
+            else
+            {
+                std::cout << "Значение для ключа " << keys[i] << " не найдено" << std::endl;
+            }
         }
+
+        // Тестируем поиск несуществующего ключа
+        int nonExistentKey = 999;
+        size_t valueSize;
+        int* value = (int*)container.at(&nonExistentKey, sizeof(int), valueSize);
+        std::cout << "Значение для несуществующего ключа " << nonExistentKey << ": "
+            << (value != nullptr ? std::to_string(*value) : "не найдено") << std::endl;
+
+        // Тестируем удаление
+        int keyToRemove = 3;
+        container.removeByKey(&keyToRemove, sizeof(int));
+        std::cout << "Удален ключ " << keyToRemove << std::endl;
+        std::cout << "Размер " << containerName << " после удаления: " << container.size() << std::endl;
+
+        // Проверяем, что элемент удален
+        value = (int*)container.at(&keyToRemove, sizeof(int), valueSize);
+        std::cout << "Значение для удаленного ключа " << keyToRemove << ": "
+            << (value != nullptr ? std::to_string(*value) : "не найдено") << std::endl;
+
+        // Тестируем итератор
+        std::cout << "\nПеречисление всех элементов через итератор:" << std::endl;
+        Container::Iterator* iter = container.newIterator();
+
+        if (iter != nullptr)
+        {
+            do
+            {
+                size_t elemSize;
+                void* elemValue = iter->getElement(elemSize);
+
+                if (elemValue != nullptr)
+                {
+                    kv_pair* pair = (kv_pair*)elemValue;
+                    int* k = (int*)pair->key;
+                    int* v = (int*)pair->value;
+                    std::cout << "Ключ: " << *k << ", Значение: " << *v << std::endl;
+                }
+
+                if (!iter->hasNext())
+                {
+                    break;
+                }
+
+                iter->goToNext();
+            } while (true);
+
+            delete iter;
+        }
+
+        // Очищаем контейнер
+        container.clear();
+        std::cout << "\nПосле очистки:" << std::endl;
+        std::cout << "Размер " << containerName << ": " << container.size() << std::endl;
+        std::cout << containerName << " пуст? " << (container.empty() ? "да" : "нет") << std::endl;
     }
-    amountOfElements = 0;
+
+    // Тестирование контейнера со строками
+    template <typename ContainerType>
+    static void testStringContainer(const char* containerName)
+    {
+        std::cout << "\n=== Тестирование " << containerName << " со строками ===\n" << std::endl;
+
+        // Создаем менеджер памяти
+        Mem memory(10000);
+
+        // Создаем контейнер
+        ContainerType container(memory);
+
+        // Добавляем элементы
+        const char* keys[] = { "apple", "banana", "cherry", "date", "elderberry" };
+        const char* values[] = { "red", "yellow", "red", "brown", "purple" };
+
+        for (int i = 0; i < 5; i++)
+        {
+            int result = container.insertByKey((void*)keys[i], strlen(keys[i]) + 1,
+                (void*)values[i], strlen(values[i]) + 1);
+            std::cout << "Добавление ключа '" << keys[i] << "', значения '" << values[i]
+                << "': " << (result == 0 ? "успешно" : "ошибка") << std::endl;
+        }
+
+        // Пробуем добавить дублирующийся ключ
+        const char* duplicateKey = "apple";
+        const char* newValue = "green";
+        int result = container.insertByKey((void*)duplicateKey, strlen(duplicateKey) + 1,
+            (void*)newValue, strlen(newValue) + 1);
+        std::cout << "Добавление дублирующегося ключа '" << duplicateKey << "': "
+            << (result == 0 ? "успешно" : "ошибка") << std::endl;
+
+        // Получаем значения по ключу
+        for (int i = 0; i < 5; i++)
+        {
+            size_t valueSize;
+            char* value = (char*)container.at((void*)keys[i], strlen(keys[i]) + 1, valueSize);
+
+            if (value != nullptr)
+            {
+                std::cout << "Значение для ключа '" << keys[i] << "': '" << value << "'" << std::endl;
+            }
+            else
+            {
+                std::cout << "Значение для ключа '" << keys[i] << "' не найдено" << std::endl;
+            }
+        }
+
+        // Тестируем удаление
+        const char* keyToRemove = "banana";
+        container.removeByKey((void*)keyToRemove, strlen(keyToRemove) + 1);
+        std::cout << "Удален ключ '" << keyToRemove << "'" << std::endl;
+
+        // Проверяем, что элемент удален
+        size_t valueSize;
+        char* value = (char*)container.at((void*)keyToRemove, strlen(keyToRemove) + 1, valueSize);
+        std::cout << "Значение для удаленного ключа '" << keyToRemove << "': "
+            << (value != nullptr ? value : "не найдено") << std::endl;
+
+        // Тестируем поиск по значению
+        const char* valueToFind = "red";
+        Container::Iterator* iter = container.find((void*)valueToFind, strlen(valueToFind) + 1);
+        std::cout << "Поиск значения '" << valueToFind << "': "
+            << (iter != nullptr ? "найдено" : "не найдено") << std::endl;
+
+        if (iter != nullptr)
+        {
+            delete iter;
+        }
+
+        // Очищаем контейнер
+        container.clear();
+        std::cout << "После очистки размер " << containerName << ": " << container.size() << std::endl;
+    }
+
+    // Тестирование перехеширования при достижении предельной загрузки
+    template <typename ContainerType>
+    static void testRehashing(const char* containerName)
+    {
+        std::cout << "\n=== Тестирование перехеширования " << containerName << " ===\n" << std::endl;
+
+        // Создаем менеджер памяти
+        Mem memory(100000);
+
+        // Создаем контейнер
+        ContainerType container(memory);
+
+        const int numElements = 2000; // Достаточно для срабатывания перехеширования
+
+        std::cout << "Добавление " << numElements << " элементов..." << std::endl;
+
+        // Добавляем элементы
+        for (int i = 0; i < numElements; i++)
+        {
+            int key = i;
+            int value = i * 10;
+            container.insertByKey(&key, sizeof(int), &value, sizeof(int));
+
+            // Выводим информацию о размере через некоторые интервалы
+            if (i % 500 == 0 || i == numElements - 1)
+            {
+                std::cout << "Добавлено " << i + 1 << " элементов, размер " << containerName << ": "
+                    << container.size() << std::endl;
+            }
+        }
+
+        // Проверяем доступ к случайным элементам
+        const int numChecks = 20;
+        std::cout << "\nПроверяем " << numChecks << " случайных элементов после перехеширования:" << std::endl;
+
+        for (int i = 0; i < numChecks; i++)
+        {
+            int key = rand() % numElements;
+            size_t valueSize;
+            int* value = (int*)container.at(&key, sizeof(int), valueSize);
+
+            std::cout << "Ключ " << key << ": "
+                << (value != nullptr ? std::to_string(*value) : "не найдено") << std::endl;
+        }
+
+        // Очищаем контейнер
+        container.clear();
+    }
+
+    // Тестирование сложных структур
+    template <typename ContainerType>
+    static void testStructs(const char* containerName)
+    {
+        std::cout << "\n=== Тестирование " << containerName << " со сложными структурами ===\n" << std::endl;
+
+        // Определяем структуру
+        struct Person
+        {
+            int id;
+            char name[50];
+            int age;
+        };
+
+        // Создаем менеджер памяти
+        Mem memory(10000);
+
+        // Создаем контейнер
+        ContainerType container(memory);
+
+        // Создаем несколько объектов Person
+        Person persons[] = {
+            {1, "Alice", 25},
+            {2, "Bob", 30},
+            {3, "Charlie", 35},
+            {4, "David", 40},
+            {5, "Eve", 45}
+        };
+
+        // Добавляем элементы в контейнер
+        for (int i = 0; i < 5; i++)
+        {
+            int result = container.insertByKey(&persons[i].id, sizeof(int), &persons[i], sizeof(Person));
+            std::cout << "Добавление Person с id=" << persons[i].id << ": "
+                << (result == 0 ? "успешно" : "ошибка") << std::endl;
+        }
+
+        // Получаем значения по ключу
+        for (int i = 1; i <= 5; i++)
+        {
+            size_t valueSize;
+            Person* person = (Person*)container.at(&i, sizeof(int), valueSize);
+
+            if (person != nullptr)
+            {
+                std::cout << "Person с id=" << i << ": name='" << person->name
+                    << "', age=" << person->age << std::endl;
+            }
+            else
+            {
+                std::cout << "Person с id=" << i << " не найден" << std::endl;
+            }
+        }
+
+        // Удаляем один элемент
+        int idToRemove = 3;
+        container.removeByKey(&idToRemove, sizeof(int));
+        std::cout << "Удален Person с id=" << idToRemove << std::endl;
+
+        // Проверяем, что элемент удален
+        size_t valueSize;
+        Person* person = (Person*)container.at(&idToRemove, sizeof(int), valueSize);
+        std::cout << "Person с id=" << idToRemove << (person != nullptr ? " найден" : " не найден") << std::endl;
+
+        // Очищаем контейнер
+        container.clear();
+        std::cout << "После очистки размер " << containerName << ": " << container.size() << std::endl;
+    }
+
+    // Запуск всех тестов для таблицы
+    static void testTableContainer()
+    {
+        std::cout << "===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ =====\n" << std::endl;
+
+        testIntContainer<Table>("таблицы");
+        testStringContainer<Table>("таблицы");
+        testRehashing<Table>("таблицы");
+        testStructs<Table>("таблицы");
+
+        std::cout << "\n===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ ЗАВЕРШЕНО =====\n" << std::endl;
+    }
+
+    // Запуск всех тестов для множества (заглушка)
+    static void testSetContainer()
+    {
+        std::cout << "===== ТЕСТИРОВАНИЕ МНОЖЕСТВА =====\n" << std::endl;
+        // Здесь будет код для тестирования множества
+        // Например:
+        // testIntContainer<Set>("множества");
+        // testStringContainer<Set>("множества");
+        // testRehashing<Set>("множества");
+        // testStructs<Set>("множества");
+        std::cout << "\n===== ТЕСТИРОВАНИЕ МНОЖЕСТВА ЗАВЕРШЕНО =====\n" << std::endl;
+    }
+};
+
+// Пример использования тестового класса
+int main()
+{
+    setlocale(LC_ALL, "Russian");
+
+    // Тест хеш-таблицы
+    ContainerTester::testTableContainer();
+
+    // Тест множества
+    // ContainerTester::testSetContainer();
+
+    return 0;
 }

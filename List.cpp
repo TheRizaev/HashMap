@@ -7,8 +7,8 @@
 
 int List::push_front(void* element, size_t size)
 {
-	list_struct* newhead = (list_struct*)_memory.allocMem(sizeof(list_struct)); //memory check
-	newhead->elem = _memory.allocMem(size); // memory check
+	list_struct* newhead = (list_struct*)_memory.allocMem(sizeof(list_struct));
+	newhead->elem = _memory.allocMem(size);
 	std::memcpy(newhead->elem, element, size);
 	newhead->size = size;
 	newhead->ptr = head;
@@ -53,12 +53,12 @@ int List::insert(Iterator* iter, void* elem, size_t size)
 	}
 	list_struct* prev = ((ListIterator*)iter)->PrevStruct;
 	list_struct* curr = ((ListIterator*)iter)->CurrStruct;
-	list_struct* newstruct = (list_struct*)_memory.allocMem(sizeof(List_struct)); //memory check
-	newstruct->elem = _memory.allocMem(size); // memory check
+	list_struct* newstruct = (list_struct*)_memory.allocMem(sizeof(List_struct));
+	newstruct->elem = _memory.allocMem(size);
 	std::memcpy(newstruct->elem, elem, size);
 	newstruct->size = size;
 	ElementCount++;
-	if (!prev) // in head
+	if (!prev)
 	{
 		newstruct->ptr = head;
 		head = newstruct;
@@ -66,7 +66,7 @@ int List::insert(Iterator* iter, void* elem, size_t size)
 		((ListIterator*)iter)->CurrStruct = head;
 		return 0;
 	}
-	else if (!curr) // in tail
+	else if (!curr)
 	{
 		prev->ptr = newstruct;
 		newstruct->ptr = nullptr;
@@ -120,7 +120,7 @@ void List::remove(Iterator* iter)
 	list_struct* curr = ((ListIterator*)iter)->CurrStruct;
 	if ((!prev && !curr) || !curr)
 		return;
-	if (!prev) // first element
+	if (!prev)
 	{
 		iter->goToNext();
 		pop_front();
@@ -128,7 +128,7 @@ void List::remove(Iterator* iter)
 		return;
 	}
 	ElementCount--;
-	if (!curr->ptr) // last element
+	if (!curr->ptr)
 	{
 		_memory.freeMem(curr->elem);
 		_memory.freeMem(curr);

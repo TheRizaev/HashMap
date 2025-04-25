@@ -1,7 +1,6 @@
 #pragma once
 #include "MemoryManager.h"
 
-// Простейший менеджер памяти, использует ::new и ::delete
 class Mem : public MemoryManager
 {
 public:
