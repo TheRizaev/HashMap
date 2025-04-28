@@ -309,10 +309,10 @@ public:
     {
         std::cout << "===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ =====\n" << std::endl;
 
-        testIntContainer<Table>("таблицы");
-        testStringContainer<Table>("таблицы");
-        testRehashing<Table>("таблицы");
-        testStructs<Table>("таблицы");
+        testIntContainer<hashTable>("таблицы");
+        testStringContainer<hashTable>("таблицы");
+        testRehashing<hashTable>("таблицы");
+        testStructs<hashTable>("таблицы");
 
         std::cout << "\n===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ ЗАВЕРШЕНО =====\n" << std::endl;
     }

@@ -4,16 +4,16 @@
 GroupContainer::GroupContainer(MemoryManager& mem) : Container(mem) {
     amountOfElements = 0;
     arraySize = 1000;
-    hashTable = (List**)_memory.allocMem(sizeof(List*) * arraySize);
+    Table = (List**)_memory.allocMem(sizeof(List*) * arraySize);
     for (size_t i = 0; i < arraySize; i++) {
-        hashTable[i] = nullptr;
+        Table[i] = nullptr;
     }
 }
 
 GroupContainer::~GroupContainer() {
-    if (hashTable) {
-        _memory.freeMem(hashTable);
-        hashTable = nullptr;
+    if (Table) {
+        _memory.freeMem(Table);
+        Table = nullptr;
     }
 }
 
@@ -32,10 +32,9 @@ void GroupContainer::decreaseAmount() {
 
 size_t GroupContainer::hashFunc(char* key, size_t keySize) {
     size_t hash = 0;
-    for (size_t i = 0; i < keySize; i++) {
-        hash = hash * 31 + key[i];
-    }
-    return hash;
+    for (size_t i = 0; i < keySize; i++)
+        hash = hash * 255 + key[i];
+    return hash % arraySize;
 }
 
 size_t GroupContainer::getArraySize() const {
@@ -43,7 +42,7 @@ size_t GroupContainer::getArraySize() const {
 }
 
 List** GroupContainer::getTable() const {
-    return hashTable;
+    return Table;
 }
 
 bool GroupContainer::empty() {
@@ -61,12 +60,12 @@ size_t GroupContainer::max_bytes() {
 GroupContainer::GroupContainerIterator::GroupContainerIterator(GroupContainer* container, size_t startIndex)
     : myContainer(container), index(startIndex), currentList(nullptr), listIterator(nullptr)
 {
-    if (!myContainer || !myContainer->hashTable)
+    if (!myContainer || !myContainer->Table)
         return;
 
     for (size_t i = startIndex; i < myContainer->arraySize; i++) {
-        if (myContainer->hashTable[i]) {
-            currentList = myContainer->hashTable[i];
+        if (myContainer->Table[i]) {
+            currentList = myContainer->Table[i];
             listIterator = currentList->newIterator();
             index = i;
             break;
@@ -90,14 +89,14 @@ void* GroupContainer::GroupContainerIterator::getElement(size_t& size) {
 }
 
 bool GroupContainer::GroupContainerIterator::hasNext() {
-    if (!myContainer || !myContainer->hashTable)
+    if (!myContainer || !myContainer->Table)
         return false;
 
     if (currentList && listIterator && listIterator->hasNext())
         return true;
 
     for (size_t i = index + 1; i < myContainer->arraySize; i++) {
-        if (myContainer->hashTable[i])
+        if (myContainer->Table[i])
             return true;
     }
 
@@ -105,7 +104,7 @@ bool GroupContainer::GroupContainerIterator::hasNext() {
 }
 
 void GroupContainer::GroupContainerIterator::goToNext() {
-    if (!myContainer || !myContainer->hashTable)
+    if (!myContainer || !myContainer->Table)
         return;
 
     if (currentList && listIterator && listIterator->hasNext()) {
@@ -119,8 +118,8 @@ void GroupContainer::GroupContainerIterator::goToNext() {
     }
 
     for (size_t i = index + 1; i < myContainer->arraySize; i++) {
-        if (myContainer->hashTable[i]) {
-            currentList = myContainer->hashTable[i];
+        if (myContainer->Table[i]) {
+            currentList = myContainer->Table[i];
             listIterator = currentList->newIterator();
             index = i;
             return;
@@ -176,7 +175,7 @@ void GroupContainer::remove(Iterator* iter) {
 
         if (gcIter->currentList->empty()) {
             delete gcIter->currentList;
-            hashTable[gcIter->index] = nullptr;
+            Table[gcIter->index] = nullptr;
             gcIter->currentList = nullptr;
         }
 
@@ -188,10 +187,10 @@ void GroupContainer::remove(Iterator* iter) {
 
 void GroupContainer::clear() {
     for (size_t i = 0; i < arraySize; i++) {
-        if (hashTable[i]) {
+        if (Table[i]) {
             clearBucket(i);
-            delete hashTable[i];
-            hashTable[i] = nullptr;
+            delete Table[i];
+            Table[i] = nullptr;
         }
     }
     amountOfElements = 0;

@@ -9,7 +9,7 @@ class GroupContainer : public Container
 protected:
     int amountOfElements;
     size_t arraySize;
-    List** hashTable;
+    List** Table;
 
     double getLoadFactor();
 

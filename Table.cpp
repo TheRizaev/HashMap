@@ -1,19 +1,19 @@
 #include "Table.h"
 #include <cstring>
 
-const double Table::MAX_LOAD_FACTOR = 0.75;
+const double hashTable::MAX_LOAD_FACTOR = 0.75;
 
-Table::Table(MemoryManager& mem) : AbstractTable(mem) {
+hashTable::hashTable(MemoryManager& mem) : AbstractTable(mem) {
     // Инициализация уже происходит в конструкторе GroupContainer
 }
 
-Table::~Table() {
+hashTable::~hashTable() {
     // Очистка выполняется в базовом классе
     clear();
 }
 
 // Преобразовать ключ в char* для хеширования
-char* Table::keyToCharArray(void* key, size_t keySize) {
+char* hashTable::keyToCharArray(void* key, size_t keySize) {
     char* keyChars = (char*)_memory.allocMem(keySize + 1);
     if (!keyChars) return nullptr;
 
@@ -23,7 +23,7 @@ char* Table::keyToCharArray(void* key, size_t keySize) {
     return keyChars;
 }
 
-bool Table::reHash() {
+bool hashTable::reHash() {
     size_t oldSize = getArraySize();
     List** oldTable = getTable();
 
@@ -38,8 +38,8 @@ bool Table::reHash() {
         newTable[i] = nullptr;
     }
 
-    List** tempTable = hashTable;
-    hashTable = newTable;
+    List** tempTable = Table;
+    Table = newTable;
     size_t tempSize = arraySize;
     arraySize = newSize;
 
@@ -85,7 +85,7 @@ bool Table::reHash() {
     return true;
 }
 
-void Table::removeElement(void* element, size_t elemSize) {
+void hashTable::removeElement(void* element, size_t elemSize) {
     if (!element) return;
 
     kv_pair* pair = (kv_pair*)element;
@@ -99,12 +99,12 @@ void Table::removeElement(void* element, size_t elemSize) {
     }
 }
 
-void Table::clearBucket(size_t bucketIndex) {
-    if (!hashTable || bucketIndex >= arraySize || !hashTable[bucketIndex]) {
+void hashTable::clearBucket(size_t bucketIndex) {
+    if (!Table || bucketIndex >= arraySize || !Table[bucketIndex]) {
         return;
     }
 
-    List* bucket = hashTable[bucketIndex];
+    List* bucket = Table[bucketIndex];
     Container::Iterator* iter = bucket->newIterator();
 
     if (iter) {
@@ -128,7 +128,7 @@ void Table::clearBucket(size_t bucketIndex) {
     }
 }
 
-int Table::insertByKey(void* key, size_t keySize, void* elem, size_t elemSize) {
+int hashTable::insertByKey(void* key, size_t keySize, void* elem, size_t elemSize) {
     if (findByKey(key, keySize) != nullptr) {
         return 1;
     }
@@ -143,8 +143,8 @@ int Table::insertByKey(void* key, size_t keySize, void* elem, size_t elemSize) {
     size_t hash = hashFunc(keyChars, keySize) % arraySize;
     _memory.freeMem(keyChars);
 
-    if (!hashTable[hash]) {
-        hashTable[hash] = new List(_memory);
+    if (!Table[hash]) {
+        Table[hash] = new List(_memory);
     }
 
     kv_pair* pair = (kv_pair*)_memory.allocMem(sizeof(kv_pair));
@@ -157,7 +157,7 @@ int Table::insertByKey(void* key, size_t keySize, void* elem, size_t elemSize) {
     memcpy(pair->value, elem, elemSize);
     pair->valueSize = elemSize;
 
-    int result = hashTable[hash]->push_front(pair, sizeof(kv_pair));
+    int result = Table[hash]->push_front(pair, sizeof(kv_pair));
 
     if (result == 0) {
         increaseAmount();
@@ -171,7 +171,7 @@ int Table::insertByKey(void* key, size_t keySize, void* elem, size_t elemSize) {
     return result;
 }
 
-void Table::removeByKey(void* key, size_t keySize) {
+void hashTable::removeByKey(void* key, size_t keySize) {
     Iterator* iter = findByKey(key, keySize);
 
     if (iter != nullptr) {
@@ -180,7 +180,7 @@ void Table::removeByKey(void* key, size_t keySize) {
     }
 }
 
-Container::Iterator* Table::findByKey(void* key, size_t keySize) {
+Container::Iterator* hashTable::findByKey(void* key, size_t keySize) {
     if (!key || keySize == 0) {
         return nullptr;
     }
@@ -191,11 +191,11 @@ Container::Iterator* Table::findByKey(void* key, size_t keySize) {
     size_t hash = hashFunc(keyChars, keySize) % arraySize;
     _memory.freeMem(keyChars);
 
-    if (!hashTable[hash]) {
+    if (!Table[hash]) {
         return nullptr;
     }
 
-    Container::Iterator* iter = hashTable[hash]->newIterator();
+    Container::Iterator* iter = Table[hash]->newIterator();
 
     if (!iter) {
         return nullptr;
@@ -222,7 +222,7 @@ Container::Iterator* Table::findByKey(void* key, size_t keySize) {
     return nullptr;
 }
 
-void* Table::at(void* key, size_t keySize, size_t& valueSize) {
+void* hashTable::at(void* key, size_t keySize, size_t& valueSize) {
     Iterator* iter = findByKey(key, keySize);
 
     if (!iter) {
@@ -246,17 +246,17 @@ void* Table::at(void* key, size_t keySize, size_t& valueSize) {
     return result;
 }
 
-Container::Iterator* Table::find(void* elem, size_t size) {
+Container::Iterator* hashTable::find(void* elem, size_t size) {
     if (!elem || size == 0) {
         return nullptr;
     }
 
     for (size_t i = 0; i < arraySize; i++) {
-        if (!hashTable[i]) {
+        if (!Table[i]) {
             continue;
         }
 
-        Container::Iterator* iter = hashTable[i]->newIterator();
+        Container::Iterator* iter = Table[i]->newIterator();
 
         if (!iter) {
             continue;
@@ -285,12 +285,12 @@ Container::Iterator* Table::find(void* elem, size_t size) {
     return nullptr;
 }
 
-Table::TableIterator::TableIterator(Table* table, size_t startIndex)
+hashTable::TableIterator::TableIterator(hashTable* table, size_t startIndex)
     : GroupContainer::GroupContainerIterator(table, startIndex)
 {
 }
 
-void* Table::TableIterator::getValue(size_t& size) {
+void* hashTable::TableIterator::getValue(size_t& size) {
     size_t elemSize;
     kv_pair* pair = (kv_pair*)getElement(elemSize);
 
@@ -303,7 +303,7 @@ void* Table::TableIterator::getValue(size_t& size) {
     return pair->value;
 }
 
-void* Table::TableIterator::getKey(size_t& size) {
+void* hashTable::TableIterator::getKey(size_t& size) {
     size_t elemSize;
     kv_pair* pair = (kv_pair*)getElement(elemSize);
 
