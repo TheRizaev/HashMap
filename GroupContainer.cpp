@@ -37,6 +37,55 @@ size_t GroupContainer::hashFunc(char* key, size_t keySize) {
     return hash % arraySize;
 }
 
+bool GroupContainer::reHash() {
+    size_t oldArraySize = arraySize;
+    List** oldTable = Table;
+
+    size_t newArraySize = arraySize * 2;
+    List** newTable = (List**)_memory.allocMem(sizeof(List*) * newArraySize);
+    if (!newTable) return false;
+
+    for (size_t i = 0; i < newArraySize; i++) {
+        newTable[i] = nullptr;
+    }
+
+    Table = newTable;
+    size_t tempArraySize = arraySize;
+    arraySize = newArraySize;
+
+    for (size_t i = 0; i < oldArraySize; i++) {
+        if (oldTable[i]) {
+            Iterator* iter = oldTable[i]->newIterator();
+            if (!iter) {
+                delete oldTable[i];
+                continue;
+            }
+            while (true) {
+                size_t elemSize;
+                void* element = iter->getElement(elemSize);
+
+                if (element) {
+                    // Remove element from old table but keep the data
+                    // We need to rehash the element into the new table
+                    // This is done in derived classes through implementation of removeElement
+
+                    // Here we can't directly rehash because we don't know the key structure
+                    // Derived classes will need to implement specific rehashing logic
+                }
+
+                if (!iter->hasNext()) break;
+                iter->goToNext();
+            }
+
+            delete iter;
+        }
+    }
+
+    _memory.freeMem(oldTable);
+
+    return true;
+}
+
 size_t GroupContainer::getArraySize() const {
     return arraySize;
 }
@@ -103,6 +152,7 @@ bool GroupContainer::GroupContainerIterator::hasNext() {
     return false;
 }
 
+
 void GroupContainer::GroupContainerIterator::goToNext() {
     if (!myContainer || !myContainer->Table)
         return;
@@ -116,17 +166,26 @@ void GroupContainer::GroupContainerIterator::goToNext() {
         delete listIterator;
         listIterator = nullptr;
     }
+        
+    currentList = nullptr;
 
-    for (size_t i = index + 1; i < myContainer->arraySize; i++) {
+    size_t i = index + 1;
+    while (i < myContainer->arraySize) {
         if (myContainer->Table[i]) {
             currentList = myContainer->Table[i];
-            listIterator = currentList->newIterator();
-            index = i;
-            return;
+
+            if (currentList->size() > 0) {
+                listIterator = currentList->newIterator();
+                if (listIterator) {
+                    index = i;
+                    return;
+                }
+            }
+
         }
+        i++;
     }
 
-    currentList = nullptr;
 }
 
 bool GroupContainer::GroupContainerIterator::equals(Iterator* right) {

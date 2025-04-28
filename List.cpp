@@ -1,6 +1,8 @@
 #include "List.h"
 #include "stdlib.h"
 
+
+
 int List::push_front(void* elem, size_t elemSize) {
     Node* newNode = (Node*)_memory.allocMem(sizeof(Node));
     if (!newNode) return 1;

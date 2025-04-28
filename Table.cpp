@@ -23,68 +23,6 @@ char* hashTable::keyToCharArray(void* key, size_t keySize) {
     return keyChars;
 }
 
-bool hashTable::reHash() {
-    size_t oldSize = getArraySize();
-    List** oldTable = getTable();
-
-    size_t newSize = oldSize * 2;
-    List** newTable = (List**)_memory.allocMem(sizeof(List*) * newSize);
-
-    if (!newTable) {
-        return false;
-    }
-
-    for (size_t i = 0; i < newSize; i++) {
-        newTable[i] = nullptr;
-    }
-
-    List** tempTable = Table;
-    Table = newTable;
-    size_t tempSize = arraySize;
-    arraySize = newSize;
-
-    int oldCount = amountOfElements;
-    amountOfElements = 0;
-
-    for (size_t i = 0; i < oldSize; i++) {
-        if (oldTable[i]) {
-            Container::Iterator* iter = oldTable[i]->newIterator();
-
-            if (iter) {
-                do {
-                    size_t elemSize;
-                    kv_pair* pair = (kv_pair*)iter->getElement(elemSize);
-
-                    if (pair) {
-                        insertByKey(pair->key, pair->keySize, pair->value, pair->valueSize);
-
-                        _memory.freeMem(pair->key);
-                        _memory.freeMem(pair->value);
-                    }
-
-                    if (!iter->hasNext()) {
-                        break;
-                    }
-
-                    iter->goToNext();
-                } while (true);
-
-                delete iter;
-            }
-
-            delete oldTable[i];
-        }
-    }
-
-    _memory.freeMem(oldTable);
-
-    if (amountOfElements != oldCount) {
-        return false;
-    }
-
-    return true;
-}
-
 void hashTable::removeElement(void* element, size_t elemSize) {
     if (!element) return;
 

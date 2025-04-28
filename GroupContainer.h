@@ -16,7 +16,7 @@ protected:
     void increaseAmount();
     void decreaseAmount();
 
-    virtual bool reHash() = 0;
+    virtual bool reHash();
 
     size_t hashFunc(char* key, size_t keySize);
 
