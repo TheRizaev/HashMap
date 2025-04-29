@@ -1,6 +1,8 @@
+#pragma once
 #include <iostream>
 #include <cstring>
 #include <string>
+#include <chrono>
 #include "Table.h"
 #include "Mem.h"
 
@@ -10,6 +12,7 @@ private:
     template <typename ContainerType>
     static void testIntContainer(const char* containerName)
     {
+        auto start = std::chrono::high_resolution_clock::now();
         std::cout << "\n=== Тестирование " << containerName << " с целыми числами ===\n" << std::endl;
         Mem memory(10000);
         ContainerType container(memory);
@@ -91,11 +94,16 @@ private:
         std::cout << "\nПосле очистки:" << std::endl;
         std::cout << "Размер " << containerName << ": " << container.size() << std::endl;
         std::cout << containerName << " пуст? " << (container.empty() ? "да" : "нет") << std::endl;
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Время выполнения теста: " << duration << " мс" << std::endl;
     }
 
     template <typename ContainerType>
     static void testStringContainer(const char* containerName)
     {
+        auto start = std::chrono::high_resolution_clock::now();
         std::cout << "\n=== Тестирование " << containerName << " со строками ===\n" << std::endl;
 
         Mem memory(10000);
@@ -153,17 +161,23 @@ private:
 
         container.clear();
         std::cout << "После очистки размер " << containerName << ": " << container.size() << std::endl;
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Время выполнения теста: " << duration << " мс" << std::endl;
     }
 
     template <typename ContainerType>
     static void testRehashing(const char* containerName)
     {
+        auto start = std::chrono::high_resolution_clock::now();
         std::cout << "\n=== Тестирование перехеширования " << containerName << " ===\n" << std::endl;
 
-        Mem memory(100000);
+        // Увеличиваем размер памяти для 1 млн элементов
+        Mem memory(200 * 1024 * 1024); // 200 МБ для хранения большого количества элементов
         ContainerType container(memory);
 
-        const int numElements = 2000;
+        const int numElements = 1000000; // 1 миллион элементов
         std::cout << "Добавление " << numElements << " элементов..." << std::endl;
 
         for (int i = 0; i < numElements; i++)
@@ -172,7 +186,8 @@ private:
             int value = i * 10;
             container.insertByKey(&key, sizeof(int), &value, sizeof(int));
 
-            if (i % 500 == 0 || i == numElements - 1)
+            // Выводим прогресс каждые 100,000 элементов
+            if (i % 100000 == 0 || i == numElements - 1)
                 std::cout << "Добавлено " << i + 1 << " элементов, размер " << containerName
                 << ": " << container.size() << std::endl;
         }
@@ -191,11 +206,17 @@ private:
         }
 
         container.clear();
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Время выполнения теста с " << numElements << " элементами: " << duration << " мс" << std::endl;
+        std::cout << "Среднее время на операцию: " << (double)duration / numElements << " мс" << std::endl;
     }
 
     template <typename ContainerType>
     static void testStructs(const char* containerName)
     {
+        auto start = std::chrono::high_resolution_clock::now();
         std::cout << "\n=== Тестирование " << containerName << " со сложными структурами ===\n" << std::endl;
 
         struct Person { int id; char name[50]; int age; };
@@ -242,26 +263,42 @@ private:
 
         container.clear();
         std::cout << "После очистки размер " << containerName << ": " << container.size() << std::endl;
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Время выполнения теста: " << duration << " мс" << std::endl;
     }
 public:
 
     static void testTableContainer()
     {
+        auto start = std::chrono::high_resolution_clock::now();
+
         std::cout << "===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ =====\n" << std::endl;
         testIntContainer<hashTable>("таблицы");
         testStringContainer<hashTable>("таблицы");
         testRehashing<hashTable>("таблицы");
         testStructs<hashTable>("таблицы");
         std::cout << "\n===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ ЗАВЕРШЕНО =====\n" << std::endl;
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Общее время выполнения всех тестов: " << duration << " мс" << std::endl;
     }
 
     static void testSetContainer()
     {
+        auto start = std::chrono::high_resolution_clock::now();
+
         std::cout << "===== ТЕСТИРОВАНИЕ МНОЖЕСТВА =====\n" << std::endl;
         /*testIntContainer<Set>("множество");
         testStringContainer<Set>("множество");
         testRehashing<Set>("множество");
         testStructs<Set>("множество");*/
         std::cout << "\n===== ТЕСТИРОВАНИЕ МНОЖЕСТВА ЗАВЕРШЕНО =====\n" << std::endl;
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Общее время выполнения всех тестов множества: " << duration << " мс" << std::endl;
     }
 };

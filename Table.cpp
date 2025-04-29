@@ -18,7 +18,7 @@ char* hashTable::keyToCharArray(void* key, size_t keySize) {
     if (!keyChars) return nullptr;
 
     memcpy(keyChars, key, keySize);
-    keyChars[keySize] = '\0'; // Добавление нулевого символа для безопасности
+    keyChars[keySize] = '\0';
 
     return keyChars;
 }
@@ -78,7 +78,7 @@ int hashTable::insertByKey(void* key, size_t keySize, void* elem, size_t elemSiz
     char* keyChars = keyToCharArray(key, keySize);
     if (!keyChars) return 1;
 
-    size_t hash = hashFunc(keyChars, keySize) % arraySize;
+    size_t hash = hashFunc(keyChars, keySize);
     _memory.freeMem(keyChars);
 
     if (!Table[hash]) {
