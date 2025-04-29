@@ -20,9 +20,6 @@ protected:
     char* keyToCharArray(void* key, size_t keySize);
 
     void removeElement(void* element, size_t elemSize) override;
-
-    void clearBucket(size_t bucketIndex) override;
-
 public:
     hashTable(MemoryManager& mem);
 

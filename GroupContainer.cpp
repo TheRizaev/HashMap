@@ -57,7 +57,7 @@ bool GroupContainer::reHash() {
         if (oldTable[i]) {
             Iterator* iter = oldTable[i]->newIterator();
             if (!iter) {
-                delete oldTable[i];
+                _memory.freeMem(oldTable[i]);
                 continue;
             }
             while (true) {
@@ -68,16 +68,13 @@ bool GroupContainer::reHash() {
                     // Remove element from old table but keep the data
                     // We need to rehash the element into the new table
                     // This is done in derived classes through implementation of removeElement
-
-                    // Here we can't directly rehash because we don't know the key structure
-                    // Derived classes will need to implement specific rehashing logic
                 }
 
                 if (!iter->hasNext()) break;
                 iter->goToNext();
             }
 
-            delete iter;
+            _memory.freeMem(iter);
         }
     }
 
@@ -166,7 +163,7 @@ void GroupContainer::GroupContainerIterator::goToNext() {
         delete listIterator;
         listIterator = nullptr;
     }
-        
+
     currentList = nullptr;
 
     size_t i = index + 1;
@@ -247,8 +244,8 @@ void GroupContainer::remove(Iterator* iter) {
 void GroupContainer::clear() {
     for (size_t i = 0; i < arraySize; i++) {
         if (Table[i]) {
-            clearBucket(i);
-            delete Table[i];
+            Table[i]->clear();
+            _memory.freeMem(Table[i]);
             Table[i] = nullptr;
         }
     }

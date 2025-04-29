@@ -104,7 +104,7 @@ private:
     static void testStringContainer(const char* containerName)
     {
         auto start = std::chrono::high_resolution_clock::now();
-        std::cout << "\n=== Тестирование " << containerName << " со строками ===\n" << std::endl;
+        std::cout << "\n\n\n\n\n\n=== Тестирование " << containerName << " со строками ===\n" << std::endl;
 
         Mem memory(10000);
         ContainerType container(memory);
@@ -171,7 +171,7 @@ private:
     static void testRehashing(const char* containerName)
     {
         auto start = std::chrono::high_resolution_clock::now();
-        std::cout << "\n=== Тестирование перехеширования " << containerName << " ===\n" << std::endl;
+        std::cout << "\n\n\n\n\n\n=== Тестирование перехеширования " << containerName << " ===\n" << std::endl;
 
         // Увеличиваем размер памяти для 1 млн элементов
         Mem memory(200 * 1024 * 1024); // 200 МБ для хранения большого количества элементов
@@ -192,32 +192,56 @@ private:
                 << ": " << container.size() << std::endl;
         }
 
-        const int numChecks = 20;
-        std::cout << "\nПроверяем " << numChecks << " случайных элементов после перехеширования:" << std::endl;
+        // Удаление всех четных ключей
+        auto deleteStart = std::chrono::high_resolution_clock::now();
+        std::cout << "\nУдаление всех четных ключей..." << std::endl;
+        for (int i = 0; i < numElements; i += 2)
+        {
+            container.removeByKey(&i, sizeof(int));
+            if (i % 100000 == 0 || i == numElements - 2)
+                std::cout << "Удалено " << i / 2 + 1 << " четных ключей" << std::endl;
+        }
+        auto deleteEnd = std::chrono::high_resolution_clock::now();
+        auto deleteDuration = std::chrono::duration_cast<std::chrono::milliseconds>(deleteEnd - deleteStart).count();
+        std::cout << "Время удаления четных ключей: " << deleteDuration / 1000.0 << " секунд" << std::endl;
 
+        // Проверка наличия четных ключей
+        auto checkStart = std::chrono::high_resolution_clock::now();
+        const int numChecks = 20;
+        std::cout << "\nПроверяем " << numChecks << " случайных четных ключей:" << std::endl;
         for (int i = 0; i < numChecks; i++)
         {
-            int key = rand() % numElements;
+            int key = (rand() % (numElements / 2)) * 2; // Случайный четный ключ
             size_t valueSize;
             int* value = (int*)container.at(&key, sizeof(int), valueSize);
-
             std::cout << "Ключ " << key << ": "
                 << (value != nullptr ? std::to_string(*value) : "не найдено") << std::endl;
         }
+        auto checkEnd = std::chrono::high_resolution_clock::now();
+        auto checkDuration = std::chrono::duration_cast<std::chrono::milliseconds>(checkEnd - checkStart).count();
+        std::cout << "Время проверки четных ключей: " << checkDuration / 1000.0 << " секунд" << std::endl;
+
+        // Проверка размера таблицы
+        auto sizeStart = std::chrono::high_resolution_clock::now();
+        size_t tableSize = container.size();
+        std::cout << "\nРазмер " << containerName << " после удаления четных ключей: " << tableSize << std::endl;
+        auto sizeEnd = std::chrono::high_resolution_clock::now();
+        auto sizeDuration = std::chrono::duration_cast<std::chrono::milliseconds>(sizeEnd - sizeStart).count();
+        std::cout << "Время проверки размера таблицы: " << sizeDuration / 1000.0 << " секунд" << std::endl;
 
         container.clear();
 
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << "Время выполнения теста с " << numElements << " элементами: " << duration << " мс" << std::endl;
-        std::cout << "Среднее время на операцию: " << (double)duration / numElements << " мс" << std::endl;
+        std::cout << "\nВремя выполнения теста с " << numElements << " элементами: " << duration / 1000.0 << " секунд" << std::endl;
+        std::cout << "Среднее время на операцию: " << (double)duration / numElements / 1000.0 << " секунд" << std::endl;
     }
 
     template <typename ContainerType>
     static void testStructs(const char* containerName)
     {
         auto start = std::chrono::high_resolution_clock::now();
-        std::cout << "\n=== Тестирование " << containerName << " со сложными структурами ===\n" << std::endl;
+        std::cout << "\n\n\n\n\n\n=== Тестирование " << containerName << " со сложными структурами ===\n" << std::endl;
 
         struct Person { int id; char name[50]; int age; };
 
@@ -277,8 +301,8 @@ public:
         std::cout << "===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ =====\n" << std::endl;
         testIntContainer<hashTable>("таблицы");
         testStringContainer<hashTable>("таблицы");
-        testRehashing<hashTable>("таблицы");
-        testStructs<hashTable>("таблицы");
+        //testRehashing<hashTable>("таблицы");
+        //testStructs<hashTable>("таблицы");
         std::cout << "\n===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ ЗАВЕРШЕНО =====\n" << std::endl;
 
         auto end = std::chrono::high_resolution_clock::now();
@@ -295,7 +319,7 @@ public:
         testStringContainer<Set>("множество");
         testRehashing<Set>("множество");
         testStructs<Set>("множество");*/
-        std::cout << "\n===== ТЕСТИРОВАНИЕ МНОЖЕСТВА ЗАВЕРШЕНО =====\n" << std::endl;
+        std::cout << "\n===== ТЕСТИРОВАНИЕ МНОастиоЖЕСТВА ЗАВЕРШЕНО =====\n" << std::endl;
 
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

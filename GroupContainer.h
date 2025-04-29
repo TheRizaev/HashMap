@@ -63,6 +63,4 @@ public:
 
 protected:
     virtual void removeElement(void* element, size_t elemSize) = 0;
-
-    virtual void clearBucket(size_t bucketIndex) = 0;
 };

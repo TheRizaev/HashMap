@@ -12,14 +12,15 @@ hashTable::~hashTable() {
     clear();
 }
 
-// Преобразовать ключ в char* для хеширования
 char* hashTable::keyToCharArray(void* key, size_t keySize) {
+    // Выделяем память для копии ключа
     char* keyChars = (char*)_memory.allocMem(keySize + 1);
     if (!keyChars) return nullptr;
 
+    // Копируем байты ключа
     memcpy(keyChars, key, keySize);
     keyChars[keySize] = '\0';
-
+    std::cout << keyChars << std::endl;
     return keyChars;
 }
 
@@ -34,35 +35,6 @@ void hashTable::removeElement(void* element, size_t elemSize) {
 
     if (pair->value) {
         _memory.freeMem(pair->value);
-    }
-}
-
-void hashTable::clearBucket(size_t bucketIndex) {
-    if (!Table || bucketIndex >= arraySize || !Table[bucketIndex]) {
-        return;
-    }
-
-    List* bucket = Table[bucketIndex];
-    Container::Iterator* iter = bucket->newIterator();
-
-    if (iter) {
-        do {
-            size_t elemSize;
-            kv_pair* pair = (kv_pair*)iter->getElement(elemSize);
-
-            if (pair) {
-                _memory.freeMem(pair->key);
-                _memory.freeMem(pair->value);
-            }
-
-            if (!iter->hasNext()) {
-                break;
-            }
-
-            iter->goToNext();
-        } while (true);
-
-        delete iter;
     }
 }
 
