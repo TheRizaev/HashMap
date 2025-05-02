@@ -19,17 +19,18 @@ char* hashTable::keyToCharArray(void* key, size_t keySize) {
     return ptr;
 }
 
-void hashTable::removeElement(void* element, size_t elemSize) {
-    if (!element) return;
-
-    kv_pair* pair = (kv_pair*)element;
-
-    if (pair->key) {
-        _memory.freeMem(pair->key);
-    }
-
-    if (pair->value) {
-        _memory.freeMem(pair->value);
+void hashTable::removeElement(void* element, size_t elemSize)
+{
+    kv_pair* pair = static_cast<kv_pair*>(element);
+    if (pair) {
+        if (pair->key) {
+            _memory.freeMem(pair->key);
+            pair->key = nullptr;
+        }
+        if (pair->value) {
+            _memory.freeMem(pair->value);
+            pair->value = nullptr;
+        }
     }
 }
 

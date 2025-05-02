@@ -242,32 +242,40 @@ void GroupContainer::remove(Iterator* iter) {
 
     size_t elemSize;
     void* element = gcIter->listIterator->getElement(elemSize);
-    if (element) {
-        bool hasNext = gcIter->hasNext();
-        size_t nextIndex = gcIter->index;
+    if (!element) return;
 
-        removeElement(element, elemSize);
-        gcIter->currentList->remove(gcIter->listIterator);
-        decreaseAmount();
+    size_t currentIndex = gcIter->index;
 
-        if (gcIter->currentList->empty()) {
-            _memory.freeMem(gcIter->currentList);
-            Table[gcIter->index] = nullptr;
+    removeElement(element, elemSize);
 
-            gcIter->currentList = nullptr;
-            gcIter->listIterator = nullptr;
+    gcIter->currentList->remove(gcIter->listIterator);
+    decreaseAmount();
 
-            for (nextIndex = gcIter->index + 1; nextIndex < arraySize; nextIndex++) {
-                if (Table[nextIndex]) {
-                    gcIter->currentList = Table[nextIndex];
-                    gcIter->listIterator = gcIter->currentList->newIterator();
-                    gcIter->index = nextIndex;
-                    break;
+    if (gcIter->currentList->size() == 0) {
+        delete gcIter->currentList;
+        Table[currentIndex] = nullptr;
+
+        gcIter->currentList = nullptr;
+
+        bool found = false;
+        for (size_t i = currentIndex + 1; i < arraySize; i++) {
+            if (Table[i]) {
+                gcIter->currentList = Table[i];
+                if (gcIter->listIterator) {
+                    delete gcIter->listIterator;
                 }
+                gcIter->listIterator = Table[i]->newIterator();
+                gcIter->index = i;
+                found = true;
+                break;
             }
         }
-        else {
-            gcIter->goToNext();
+
+        if (!found) {
+            if (gcIter->listIterator) {
+                delete gcIter->listIterator;
+                gcIter->listIterator = nullptr;
+            }
         }
     }
 }
