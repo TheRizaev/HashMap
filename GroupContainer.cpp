@@ -1,4 +1,5 @@
 #include "GroupContainer.h"
+#include "Table.h"
 #include <string>
 
 GroupContainer::GroupContainer(MemoryManager& mem) : Container(mem) {
@@ -65,9 +66,18 @@ bool GroupContainer::reHash() {
                 void* element = iter->getElement(elemSize);
 
                 if (element) {
-                    // Remove element from old table but keep the data
-                    // We need to rehash the element into the new table
-                    // This is done in derived classes through implementation of removeElement
+                    void* copy = _memory.allocMem(elemSize);
+                    std::memcpy(copy, element, elemSize);
+
+                    kv_pair* pair = static_cast<kv_pair*>(copy);
+                    if (pair) {
+                        size_t newIndex = hashFunc((char*)pair->key, pair->keySize);
+                        if (!Table[newIndex]) {
+                            Table[newIndex] = new List(_memory);
+                        }
+                        Table[newIndex]->push_front(copy, elemSize);
+                        _memory.freeMem(copy);
+                    }
                 }
 
                 if (!iter->hasNext()) break;
@@ -233,21 +243,32 @@ void GroupContainer::remove(Iterator* iter) {
     size_t elemSize;
     void* element = gcIter->listIterator->getElement(elemSize);
     if (element) {
+        bool hasNext = gcIter->hasNext();
+        size_t nextIndex = gcIter->index;
+
         removeElement(element, elemSize);
-
         gcIter->currentList->remove(gcIter->listIterator);
-
         decreaseAmount();
 
         if (gcIter->currentList->empty()) {
-            delete gcIter->currentList;
+            _memory.freeMem(gcIter->currentList);
             Table[gcIter->index] = nullptr;
+
             gcIter->currentList = nullptr;
+            gcIter->listIterator = nullptr;
+
+            for (nextIndex = gcIter->index + 1; nextIndex < arraySize; nextIndex++) {
+                if (Table[nextIndex]) {
+                    gcIter->currentList = Table[nextIndex];
+                    gcIter->listIterator = gcIter->currentList->newIterator();
+                    gcIter->index = nextIndex;
+                    break;
+                }
+            }
         }
-
-        gcIter->listIterator = nullptr;
-
-        gcIter->goToNext();
+        else {
+            gcIter->goToNext();
+        }
     }
 }
 

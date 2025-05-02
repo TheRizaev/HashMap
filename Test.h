@@ -173,55 +173,33 @@ private:
         auto start = std::chrono::high_resolution_clock::now();
         std::cout << "\n\n\n\n\n\n=== Тестирование перехеширования " << containerName << " ===\n" << std::endl;
 
-        // Увеличиваем размер памяти для 1 млн элементов
-        Mem memory(200 * 1024 * 1024 * 10); // 200 МБ для хранения большого количества элементов
+        Mem memory(200 * 1024 * 1024);
         ContainerType container(memory);
 
-        const int numElements = 1000000; // 1 миллион элементов
+        const int numElements = 1000000;
         std::cout << "Добавление " << numElements << " элементов..." << std::endl;
-
+        auto createStart = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < numElements; i++)
         {
             int key = i;
             int value = i * 10;
             container.insertByKey(&key, sizeof(int), &value, sizeof(int));
-
-            // Выводим прогресс каждые 100,000 элементов
-            if (i % 100000 == 0 || i == numElements - 1)
-                std::cout << "Добавлено " << i + 1 << " элементов, размер " << containerName
-                << ": " << container.size() << std::endl;
         }
+        auto createEnd = std::chrono::high_resolution_clock::now();
+        auto createDuration = std::chrono::duration_cast<std::chrono::milliseconds>(createEnd - createStart).count();
+        std::cout << "Создание: " << createDuration / 1000.0 << " секунд" << std::endl;
 
-        // Удаление всех четных ключей
         auto deleteStart = std::chrono::high_resolution_clock::now();
         std::cout << "\nУдаление всех четных ключей..." << std::endl;
         for (int i = 0; i < numElements; i += 2)
         {
             container.removeByKey(&i, sizeof(int));
-           /* if (i % 100000 == 0 || i == numElements - 2)
-                std::cout << "Удалено " << i / 2 + 1 << " четных ключей" << std::endl;*/
         }
         auto deleteEnd = std::chrono::high_resolution_clock::now();
         auto deleteDuration = std::chrono::duration_cast<std::chrono::milliseconds>(deleteEnd - deleteStart).count();
         std::cout << "Время удаления четных ключей: " << deleteDuration / 1000.0 << " секунд" << std::endl;
 
-        // Проверка наличия четных ключей
-        auto checkStart = std::chrono::high_resolution_clock::now();
-        const int numChecks = 20;
-        std::cout << "\nПроверяем " << numChecks << " случайных четных ключей:" << std::endl;
-        for (int i = 0; i < numChecks; i++)
-        {
-            int key = (rand() % (numElements / 2)) * 2; // Случайный четный ключ
-            size_t valueSize;
-            int* value = (int*)container.at(&key, sizeof(int), valueSize);
-            std::cout << "Ключ " << key << ": "
-                << (value != nullptr ? std::to_string(*value) : "не найдено") << std::endl;
-        }
-        auto checkEnd = std::chrono::high_resolution_clock::now();
-        auto checkDuration = std::chrono::duration_cast<std::chrono::milliseconds>(checkEnd - checkStart).count();
-        std::cout << "Время проверки четных ключей: " << checkDuration / 1000.0 << " секунд" << std::endl;
-
-        // Проверка размера таблицы
+        // Проверка размера 
         auto sizeStart = std::chrono::high_resolution_clock::now();
         size_t tableSize = container.size();
         std::cout << "\nРазмер " << containerName << " после удаления четных ключей: " << tableSize << std::endl;

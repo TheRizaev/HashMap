@@ -1,45 +1,150 @@
 #pragma once
 #include "AbstractList.h"
-#include "Mem.h"
-#include "MemoryManager.h"
-#include <iostream>
 
-typedef struct List_struct
+typedef struct Node
 {
-	List_struct* ptr;
-	void* elem;
-	size_t size;
-}list_struct;
-
+    void* data;
+    size_t size;
+    Node* next;
+};
 class List : public AbstractList
 {
-	int ElementCount = 0;
-	size_t MaxBytes = 0;
-	list_struct* head = nullptr;
+private:
+    Node* head;
+    int count;
 public:
-	List(MemoryManager& mem) : AbstractList(mem) {}
-	int push_front(void* element, size_t size);
-	void pop_front();
-	void* front(size_t& sz);
-	int insert(Iterator* iter, void* elem, size_t size);
-	int size();
-	size_t max_bytes();
-	Iterator* find(void* elem, size_t size);
-	Iterator* newIterator();
-	void remove(Iterator* iter);
-	void clear();
-	bool empty();
-	class ListIterator : public	Iterator
-	{
-		list_struct* CurrStruct = nullptr;
-		list_struct* PrevStruct = nullptr;
-	public:
-		friend class List;
-		void* getElement(size_t& sz);
-		bool hasNext();
-		void goToNext();
-		bool equals(Iterator* right);
-	};
-	friend class ListIterator;
-	~List();
+    List(MemoryManager& mem) : AbstractList(mem), head(NULL) {}
+    ~List() { clear(); }
+    class ListIterator : public Iterator
+    {
+    public:
+        Node* current;
+        ListIterator(Node* begin) : current(begin) {}
+        ListIterator() : current(NULL) {}
+        ~ListIterator() {}
+        void* getElement(size_t& size)
+        {
+            if (!current)
+            {
+                size = 0;
+                return NULL;
+            }
+            size = current->size;
+            return current->data;
+        }
+
+        bool hasNext()
+        {
+            if (current)
+                return current->next;
+            else
+                return false;
+        }
+
+        void goToNext()
+        {
+            if (current)
+                current = current->next;
+        }
+
+        bool equals(Iterator* right)
+        {
+            ListIterator* Iter = (ListIterator*)right;
+            if (!Iter)
+                return false;
+            return Iter->current == current;
+        }
+    };
+    int push_front(void* elem, size_t elemSize);
+    void pop_front();
+    void* front(size_t& size);
+    int insert(Iterator* iter, void* elem, size_t elemSize);
+
+
+    int size() { return count; }
+    size_t max_bytes() { return _memory.maxBytes(); }
+
+    Iterator* find(void* elem, size_t size)
+    {
+        ListIterator* Iter = new ListIterator();
+        Iter->current = head;
+        while (size != Iter->current->size || memcmp(Iter->current->data, elem, size))
+        {
+            Iter->current = Iter->current->next;
+        }
+        if (memcmp(Iter->current->data, elem, size))
+            return Iter;
+        //_memory.freeMem(Iter);
+        return NULL;
+    }
+
+    Iterator* newIterator()
+    {
+        ListIterator* Iter = new ListIterator();
+        //ListIterator* Iter = (ListIterator*)_memory.allocMem(sizeof(ListIterator));
+        Iter->current = head;
+        if (Iter->current)
+            return Iter;
+        return NULL;
+    }
+
+    void remove(Iterator* iter)
+    {
+        ListIterator* Iter = (ListIterator*)iter;
+        if (!(!Iter || head)) return;
+        Node* current = head;
+        if (current == Iter->current)
+        {
+            head = current->next;
+            Iter->goToNext();
+            _memory.freeMem(current->data);
+            _memory.freeMem(current);
+            count--;
+            return;
+        }
+        Node* tmp = current;
+        while (current->next && current->next != Iter->current) {
+            tmp = current;
+            current = current->next;
+        }
+        if (current->next) {
+            Node* temp = current->next;
+            current->next = temp->next;
+            Iter->goToNext();
+            _memory.freeMem(temp->data);
+            _memory.freeMem(temp);
+            count--;
+        }
+    }
+
+
+    void clear()
+    {
+        if (!head)
+            return;
+        while (head)
+        {
+            Node* temp = head;
+            head = head->next;
+            _memory.freeMem(temp->data);
+            _memory.freeMem(temp);
+        }
+        count = 0;
+    }
+
+    bool empty()
+    {
+        return head != NULL;
+    }
+    void print()
+    {
+        Node* temp = head;
+        while (temp)
+        {
+
+            printf("%d\n", *(int*)temp->data);
+            temp = temp->next;
+        }
+    }
 };
+
