@@ -103,20 +103,24 @@ size_t GroupContainer::max_bytes() {
     return arraySize * sizeof(List*);
 }
 
-GroupContainer::GroupContainerIterator::GroupContainerIterator(GroupContainer* container, size_t startIndex)
+GroupContainer::GroupContainerIterator::GroupContainerIterator(GroupContainer* container, size_t startIndex, Iterator* new_it)
     : myContainer(container), index(startIndex), currentList(nullptr), listIterator(nullptr)
 {
     if (!myContainer || !myContainer->Table)
         return;
 
-    for (size_t i = startIndex; i < myContainer->arraySize; i++) {
-        if (myContainer->Table[i]) {
-            currentList = myContainer->Table[i];
-            listIterator = currentList->newIterator();
-            index = i;
-            break;
-        }
-    }
+    currentList = myContainer->Table[startIndex];
+    listIterator = new_it;
+    index = startIndex;
+
+    //for (size_t i = startIndex; i < myContainer->arraySize; i++) {
+    //    if (myContainer->Table[i]) {
+    //        currentList = myContainer->Table[i];
+    //        listIterator = currentList->newIterator();
+    //        index = i;
+    //        break;
+    //    }
+    //}
 }
 
 GroupContainer::GroupContainerIterator::~GroupContainerIterator() {
@@ -211,7 +215,13 @@ bool GroupContainer::GroupContainerIterator::equals(Iterator* right) {
 Container::Iterator* GroupContainer::newIterator() {
     if (empty())
         return nullptr;
-    return new GroupContainerIterator(this);
+    size_t i = 0;
+    for (; i < arraySize; i++)
+        if (Table[i])
+            break;
+    if (i == arraySize)
+        return nullptr;
+    return new GroupContainerIterator(this, i, Table[i]->newIterator());
 }
 
 void GroupContainer::remove(Iterator* iter) {

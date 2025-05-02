@@ -34,7 +34,7 @@ public:
 
     class TableIterator : public GroupContainer::GroupContainerIterator {
     public:
-        TableIterator(hashTable* table, size_t startIndex = 0);
+        TableIterator(hashTable* table, size_t startIndex, Iterator* new_it);
         void* getValue(size_t& size);
         void* getKey(size_t& size);
     };

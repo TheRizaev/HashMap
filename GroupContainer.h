@@ -40,7 +40,7 @@ public:
         GroupContainer* myContainer;
 
     public:
-        GroupContainerIterator(GroupContainer* container, size_t startIndex = 0);
+        GroupContainerIterator(GroupContainer* container, size_t startIndex, Iterator* new_it);
 
         ~GroupContainerIterator();
 

@@ -12,16 +12,11 @@ hashTable::~hashTable() {
     clear();
 }
 
-char* hashTable::keyToCharArray(void* key, size_t keySize) {
-    // Выделяем память для копии ключа
-    char* keyChars = (char*)_memory.allocMem(keySize + 1);
-    if (!keyChars) return nullptr;
 
-    // Копируем байты ключа
-    memcpy(keyChars, key, keySize);
-    keyChars[keySize] = '\0';
-    std::cout << keyChars << std::endl;
-    return keyChars;
+char* hashTable::keyToCharArray(void* key, size_t keySize) {
+    char* ptr = (char*)_memory.allocMem(keySize + 1);
+    strcpy(ptr, (char*)key);
+    return ptr;
 }
 
 void hashTable::removeElement(void* element, size_t elemSize) {
@@ -116,8 +111,7 @@ Container::Iterator* hashTable::findByKey(void* key, size_t keySize) {
         kv_pair* pair = (kv_pair*)iter->getElement(elemSize);
 
         if (pair && pair->keySize == keySize && memcmp(pair->key, key, keySize) == 0) {
-            TableIterator* tableIter = new TableIterator(this, hash);
-            delete iter;
+            TableIterator* tableIter = new TableIterator(this, hash, iter);
             return tableIter;
         }
 
@@ -177,8 +171,7 @@ Container::Iterator* hashTable::find(void* elem, size_t size) {
             kv_pair* pair = (kv_pair*)iter->getElement(elemSize);
 
             if (pair && pair->valueSize == size && memcmp(pair->value, elem, size) == 0) {
-                TableIterator* tableIter = new TableIterator(this, i);
-                delete iter;
+                TableIterator* tableIter = new TableIterator(this, i, iter);
                 return tableIter;
             }
 
@@ -195,9 +188,10 @@ Container::Iterator* hashTable::find(void* elem, size_t size) {
     return nullptr;
 }
 
-hashTable::TableIterator::TableIterator(hashTable* table, size_t startIndex)
-    : GroupContainer::GroupContainerIterator(table, startIndex)
+hashTable::TableIterator::TableIterator(hashTable* table, size_t startIndex, Iterator* new_it)
+    : GroupContainer::GroupContainerIterator(table, startIndex, new_it)
 {
+
 }
 
 void* hashTable::TableIterator::getValue(size_t& size) {

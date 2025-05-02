@@ -122,7 +122,7 @@ private:
 
         const char* duplicateKey = "apple";
         const char* newValue = "green";
-        int result = container.insertByKey((void*)duplicateKey, strlen(duplicateKey) + 1,
+        int result = container.insertByKey((void*)duplicateKey, strlen(duplicateKey),
             (void*)newValue, strlen(newValue) + 1);
         std::cout << "Добавление дублирующегося ключа '" << duplicateKey << "': "
             << (result == 0 ? "успешно" : "ошибка") << std::endl;
@@ -174,7 +174,7 @@ private:
         std::cout << "\n\n\n\n\n\n=== Тестирование перехеширования " << containerName << " ===\n" << std::endl;
 
         // Увеличиваем размер памяти для 1 млн элементов
-        Mem memory(200 * 1024 * 1024); // 200 МБ для хранения большого количества элементов
+        Mem memory(200 * 1024 * 1024 * 10); // 200 МБ для хранения большого количества элементов
         ContainerType container(memory);
 
         const int numElements = 1000000; // 1 миллион элементов
@@ -198,8 +198,8 @@ private:
         for (int i = 0; i < numElements; i += 2)
         {
             container.removeByKey(&i, sizeof(int));
-            if (i % 100000 == 0 || i == numElements - 2)
-                std::cout << "Удалено " << i / 2 + 1 << " четных ключей" << std::endl;
+           /* if (i % 100000 == 0 || i == numElements - 2)
+                std::cout << "Удалено " << i / 2 + 1 << " четных ключей" << std::endl;*/
         }
         auto deleteEnd = std::chrono::high_resolution_clock::now();
         auto deleteDuration = std::chrono::duration_cast<std::chrono::milliseconds>(deleteEnd - deleteStart).count();
@@ -301,8 +301,8 @@ public:
         std::cout << "===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ =====\n" << std::endl;
         testIntContainer<hashTable>("таблицы");
         testStringContainer<hashTable>("таблицы");
-        //testRehashing<hashTable>("таблицы");
-        //testStructs<hashTable>("таблицы");
+        testRehashing<hashTable>("таблицы");
+        testStructs<hashTable>("таблицы");
         std::cout << "\n===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ ЗАВЕРШЕНО =====\n" << std::endl;
 
         auto end = std::chrono::high_resolution_clock::now();
