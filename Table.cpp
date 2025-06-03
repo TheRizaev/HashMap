@@ -78,11 +78,48 @@ int hashTable::insertByKey(void* key, size_t keySize, void* elem, size_t elemSiz
 }
 
 void hashTable::removeByKey(void* key, size_t keySize) {
-    Iterator* iter = findByKey(key, keySize);
+    if (!key || keySize == 0 || empty())
+        return;
 
-    if (iter != nullptr) {
-        remove(iter);
-        delete iter;
+    size_t index = hashFunc((char*)key, keySize);
+
+    if (!Table[index])
+        return;
+
+    List* currentList = Table[index];
+    Iterator* iter = currentList->newIterator();
+
+    if (!iter)
+        return;
+
+    bool removed = false;
+
+    while (true) {
+        size_t elemSize;
+        void* element = iter->getElement(elemSize);
+
+        if (element) {
+            kv_pair* pair = static_cast<kv_pair*>(element);
+
+            if (pair->keySize == keySize && memcmp(pair->key, key, keySize) == 0) {
+                currentList->remove(iter);
+                decreaseAmount();  
+                removed = true;
+                break;
+            }
+        }
+
+        if (!iter->hasNext())
+            break;
+
+        iter->goToNext();
+    }
+
+    delete iter;
+
+    if (removed && currentList->size() == 0) {
+        delete currentList;
+        Table[index] = nullptr;
     }
 }
 

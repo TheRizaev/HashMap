@@ -28,7 +28,9 @@ void GroupContainer::increaseAmount() {
 }
 
 void GroupContainer::decreaseAmount() {
-    if (amountOfElements > 0) amountOfElements--;
+    if (amountOfElements > 0) {
+        amountOfElements--;
+    }
 }
 
 size_t GroupContainer::hashFunc(char* key, size_t keySize) {
@@ -246,17 +248,23 @@ void GroupContainer::remove(Iterator* iter) {
 
     size_t currentIndex = gcIter->index;
 
+    // Save the current state before removal
+    bool hasNext = gcIter->listIterator->hasNext();
+
+    // Remove the element from the container (custom implementation in derived class)
     removeElement(element, elemSize);
 
+    // Remove from the list and update container count
     gcIter->currentList->remove(gcIter->listIterator);
     decreaseAmount();
 
+    // Check if the list is now empty
     if (gcIter->currentList->size() == 0) {
         delete gcIter->currentList;
         Table[currentIndex] = nullptr;
-
         gcIter->currentList = nullptr;
 
+        // Find the next non-empty list
         bool found = false;
         for (size_t i = currentIndex + 1; i < arraySize; i++) {
             if (Table[i]) {
@@ -277,6 +285,14 @@ void GroupContainer::remove(Iterator* iter) {
                 gcIter->listIterator = nullptr;
             }
         }
+    }
+    // If the list is not empty but the current element was the last one in the list
+    else if (!hasNext) {
+        // Reset iterator to the beginning of the current list
+        if (gcIter->listIterator) {
+            delete gcIter->listIterator;
+        }
+        gcIter->listIterator = gcIter->currentList->newIterator();
     }
 }
 
