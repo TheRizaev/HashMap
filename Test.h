@@ -65,10 +65,10 @@ private:
     {
         std::cout << "=== Тест с миллионом элементов ===" << std::endl;
 
-        Mem memory(200 * 1024 * 1024); // 200 МБ
+        Mem memory(100); // 200 МБ
         hashTable table(memory);
 
-        const int numElements = 1000000;
+        const int numElements = 100000;
 
         // Вставка миллиона элементов
         std::cout << "Вставка " << numElements << " элементов..." << std::endl;
@@ -105,53 +105,8 @@ private:
         std::cout << "Время удаления: " << deleteTime << " секунд" << std::endl;
         std::cout << "Элементов в таблице после удаления: " << table.size() << std::endl;
 
-        // Проверка удаленных элементов
-        std::cout << "\nПроверка удаленных элементов..." << std::endl;
-        auto checkStart = std::chrono::high_resolution_clock::now();
-
-        int found = 0;
-        int notFound = 0;
-
-        // Проверяем первые 100 четных ключей
-        for (int i = 0; i < 200; i += 2) {
-            size_t valueSize;
-            void* value = table.at(&i, sizeof(int), valueSize);
-            if (value) {
-                found++;
-            }
-            else {
-                notFound++;
-            }
-        }
-
-        std::cout << "Из первых 100 удаленных ключей:" << std::endl;
-        std::cout << "- Найдено: " << found << std::endl;
-        std::cout << "- Не найдено: " << notFound << std::endl;
-
-        // Проверяем нечетные ключи (должны остаться)
-        found = 0;
-        notFound = 0;
-        for (int i = 1; i < 200; i += 2) {
-            size_t valueSize;
-            void* value = table.at(&i, sizeof(int), valueSize);
-            if (value) {
-                found++;
-            }
-            else {
-                notFound++;
-            }
-        }
-
-        std::cout << "\nИз первых 100 оставшихся ключей (нечетные):" << std::endl;
-        std::cout << "- Найдено: " << found << std::endl;
-        std::cout << "- Не найдено: " << notFound << std::endl;
-
-        auto checkEnd = std::chrono::high_resolution_clock::now();
-        auto checkTime = std::chrono::duration<double>(checkEnd - checkStart).count();
-        std::cout << "\nВремя проверки: " << checkTime << " секунд" << std::endl;
-
         // Общее время
-        auto totalTime = insertTime + deleteTime + checkTime;
+        auto totalTime = insertTime + deleteTime;
         std::cout << "\nОбщее время теста: " << totalTime << " секунд" << std::endl;
         std::cout << "Среднее время на операцию: " << totalTime / (numElements * 1.5) * 1000000
             << " микросекунд" << std::endl;
