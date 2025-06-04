@@ -248,52 +248,64 @@ void GroupContainer::remove(Iterator* iter) {
 
     size_t currentIndex = gcIter->index;
 
-    // Save the current state before removal
-    bool hasNext = gcIter->listIterator->hasNext();
-
-    // Remove the element from the container (custom implementation in derived class)
+    // Вызываем виртуальный метод для удаления из производного класса
     removeElement(element, elemSize);
 
-    // Remove from the list and update container count
+    // Проверяем, есть ли следующий элемент в текущем списке
+    bool currentListHasNext = gcIter->listIterator->hasNext();
+
+    // Удаляем из списка
     gcIter->currentList->remove(gcIter->listIterator);
     decreaseAmount();
 
-    // Check if the list is now empty
+    // Если список стал пустым
     if (gcIter->currentList->size() == 0) {
         delete gcIter->currentList;
         Table[currentIndex] = nullptr;
         gcIter->currentList = nullptr;
 
-        // Find the next non-empty list
-        bool found = false;
+        // Удаляем старый итератор списка
+        if (gcIter->listIterator) {
+            delete gcIter->listIterator;
+            gcIter->listIterator = nullptr;
+        }
+
+        // Ищем следующий непустой список
         for (size_t i = currentIndex + 1; i < arraySize; i++) {
-            if (Table[i]) {
+            if (Table[i] && Table[i]->size() > 0) {
                 gcIter->currentList = Table[i];
-                if (gcIter->listIterator) {
-                    delete gcIter->listIterator;
-                }
                 gcIter->listIterator = Table[i]->newIterator();
                 gcIter->index = i;
-                found = true;
-                break;
+                return;
             }
         }
 
-        if (!found) {
-            if (gcIter->listIterator) {
-                delete gcIter->listIterator;
-                gcIter->listIterator = nullptr;
-            }
-        }
+        // Если не нашли следующий список, итератор указывает на конец
+        gcIter->index = arraySize;
     }
-    // If the list is not empty but the current element was the last one in the list
-    else if (!hasNext) {
-        // Reset iterator to the beginning of the current list
+    // Если список не пустой, но мы удалили последний элемент
+    else if (!currentListHasNext) {
+        // Перемещаемся к следующему списку
         if (gcIter->listIterator) {
             delete gcIter->listIterator;
+            gcIter->listIterator = nullptr;
         }
-        gcIter->listIterator = gcIter->currentList->newIterator();
+
+        // Ищем следующий непустой список
+        for (size_t i = currentIndex + 1; i < arraySize; i++) {
+            if (Table[i] && Table[i]->size() > 0) {
+                gcIter->currentList = Table[i];
+                gcIter->listIterator = Table[i]->newIterator();
+                gcIter->index = i;
+                return;
+            }
+        }
+
+        // Если не нашли, итератор на конец
+        gcIter->currentList = nullptr;
+        gcIter->index = arraySize;
     }
+    // Если в текущем списке есть еще элементы, итератор уже указывает на следующий
 }
 
 void GroupContainer::clear() {
@@ -306,3 +318,4 @@ void GroupContainer::clear() {
     }
     amountOfElements = 0;
 }
+

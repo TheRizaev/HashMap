@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 #include "GroupList.h"
 
 // јбстрактный класс: однонаправленный список

@@ -103,7 +103,7 @@ void hashTable::removeByKey(void* key, size_t keySize) {
 
             if (pair->keySize == keySize && memcmp(pair->key, key, keySize) == 0) {
                 currentList->remove(iter);
-                decreaseAmount();  
+                decreaseAmount();
                 removed = true;
                 break;
             }
