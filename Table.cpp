@@ -12,10 +12,9 @@ hashTable::~hashTable() {
     clear();
 }
 
-
 char* hashTable::keyToCharArray(void* key, size_t keySize) {
-    char* ptr = (char*)_memory.allocMem(keySize + 1);
-    strcpy(ptr, (char*)key);
+    char* ptr = (char*)_memory.allocMem(keySize);
+    memcpy(ptr, key, keySize);
     return ptr;
 }
 
@@ -35,24 +34,27 @@ void hashTable::removeElement(void* element, size_t elemSize)
 }
 
 int hashTable::insertByKey(void* key, size_t keySize, void* elem, size_t elemSize) {
-    if (findByKey(key, keySize) != nullptr) {
-        return 1;
+    // Проверяем, существует ли уже элемент с таким ключом
+    Iterator* existingIter = findByKey(key, keySize);
+    if (existingIter != nullptr) {
+        delete existingIter;
+        return 1; // Элемент с таким ключом уже существует
     }
 
+    // Проверяем необходимость рехеширования
     if (getLoadFactor() >= MAX_LOAD_FACTOR) {
         reHash();
     }
 
-    char* keyChars = keyToCharArray(key, keySize);
-    if (!keyChars) return 1;
+    // Вычисляем хеш напрямую
+    size_t hash = hashFunc((char*)key, keySize);
 
-    size_t hash = hashFunc(keyChars, keySize);
-    _memory.freeMem(keyChars);
-
+    // Создаем список если его нет
     if (!Table[hash]) {
         Table[hash] = new List(_memory);
     }
 
+    // Создаем пару ключ-значение
     kv_pair* pair = (kv_pair*)_memory.allocMem(sizeof(kv_pair));
 
     pair->key = _memory.allocMem(keySize);
@@ -63,12 +65,14 @@ int hashTable::insertByKey(void* key, size_t keySize, void* elem, size_t elemSiz
     memcpy(pair->value, elem, elemSize);
     pair->valueSize = elemSize;
 
+    // Добавляем в список
     int result = Table[hash]->push_front(pair, sizeof(kv_pair));
 
     if (result == 0) {
         increaseAmount();
     }
     else {
+        // Очищаем память в случае ошибки
         _memory.freeMem(pair->key);
         _memory.freeMem(pair->value);
         _memory.freeMem(pair);
@@ -81,6 +85,7 @@ void hashTable::removeByKey(void* key, size_t keySize) {
     if (!key || keySize == 0 || empty())
         return;
 
+    // Вычисляем хеш напрямую из ключа
     size_t index = hashFunc((char*)key, keySize);
 
     if (!Table[index])
@@ -102,8 +107,12 @@ void hashTable::removeByKey(void* key, size_t keySize) {
             kv_pair* pair = static_cast<kv_pair*>(element);
 
             if (pair->keySize == keySize && memcmp(pair->key, key, keySize) == 0) {
+                // Очищаем память пары перед удалением
+                removeElement(element, elemSize);
+
+                // Удаляем из списка
                 currentList->remove(iter);
-                decreaseAmount();  
+                decreaseAmount();
                 removed = true;
                 break;
             }
@@ -117,6 +126,7 @@ void hashTable::removeByKey(void* key, size_t keySize) {
 
     delete iter;
 
+    // Удаляем пустой список
     if (removed && currentList->size() == 0) {
         delete currentList;
         Table[index] = nullptr;
@@ -128,11 +138,8 @@ Container::Iterator* hashTable::findByKey(void* key, size_t keySize) {
         return nullptr;
     }
 
-    char* keyChars = keyToCharArray(key, keySize);
-    if (!keyChars) return nullptr;
-
-    size_t hash = hashFunc(keyChars, keySize) % arraySize;
-    _memory.freeMem(keyChars);
+    // Вычисляем хеш напрямую
+    size_t hash = hashFunc((char*)key, keySize);
 
     if (!Table[hash]) {
         return nullptr;

@@ -56,29 +56,34 @@ bool GroupContainer::reHash() {
     size_t tempArraySize = arraySize;
     arraySize = newArraySize;
 
+    // ВАЖНО: Сохраняем текущее количество элементов
+    int savedAmountOfElements = amountOfElements;
+    amountOfElements = 0;  // Временно обнуляем для корректного подсчета
+
     for (size_t i = 0; i < oldArraySize; i++) {
         if (oldTable[i]) {
             Iterator* iter = oldTable[i]->newIterator();
             if (!iter) {
-                _memory.freeMem(oldTable[i]);
+                // Очищаем список перед удалением
+                oldTable[i]->clear();
+                delete oldTable[i];
                 continue;
             }
+
             while (true) {
                 size_t elemSize;
                 void* element = iter->getElement(elemSize);
 
                 if (element) {
-                    void* copy = _memory.allocMem(elemSize);
-                    std::memcpy(copy, element, elemSize);
-
-                    kv_pair* pair = static_cast<kv_pair*>(copy);
+                    kv_pair* pair = static_cast<kv_pair*>(element);
                     if (pair) {
                         size_t newIndex = hashFunc((char*)pair->key, pair->keySize);
                         if (!Table[newIndex]) {
                             Table[newIndex] = new List(_memory);
                         }
-                        Table[newIndex]->push_front(copy, elemSize);
-                        _memory.freeMem(copy);
+                        // Передаем элемент напрямую, push_front сделает свою копию
+                        Table[newIndex]->push_front(element, elemSize);
+                        amountOfElements++;  // Увеличиваем счетчик при добавлении
                     }
                 }
 
@@ -86,11 +91,21 @@ bool GroupContainer::reHash() {
                 iter->goToNext();
             }
 
-            _memory.freeMem(iter);
+            delete iter;
+
+            // Очищаем старый список
+            oldTable[i]->clear();
+            delete oldTable[i];
         }
     }
 
     _memory.freeMem(oldTable);
+
+    // Проверяем, что количество элементов не изменилось
+    if (amountOfElements != savedAmountOfElements) {
+        // Это не должно происходить, но если происходит - восстанавливаем
+        amountOfElements = savedAmountOfElements;
+    }
 
     return true;
 }
@@ -124,15 +139,6 @@ GroupContainer::GroupContainerIterator::GroupContainerIterator(GroupContainer* c
     currentList = myContainer->Table[startIndex];
     listIterator = new_it;
     index = startIndex;
-
-    //for (size_t i = startIndex; i < myContainer->arraySize; i++) {
-    //    if (myContainer->Table[i]) {
-    //        currentList = myContainer->Table[i];
-    //        listIterator = currentList->newIterator();
-    //        index = i;
-    //        break;
-    //    }
-    //}
 }
 
 GroupContainer::GroupContainerIterator::~GroupContainerIterator() {
@@ -165,7 +171,6 @@ bool GroupContainer::GroupContainerIterator::hasNext() {
     return false;
 }
 
-
 void GroupContainer::GroupContainerIterator::goToNext() {
     if (!myContainer || !myContainer->Table)
         return;
@@ -194,11 +199,9 @@ void GroupContainer::GroupContainerIterator::goToNext() {
                     return;
                 }
             }
-
         }
         i++;
     }
-
 }
 
 bool GroupContainer::GroupContainerIterator::equals(Iterator* right) {
@@ -300,7 +303,7 @@ void GroupContainer::clear() {
     for (size_t i = 0; i < arraySize; i++) {
         if (Table[i]) {
             Table[i]->clear();
-            _memory.freeMem(Table[i]);
+            delete Table[i];  // Изменено с _memory.freeMem на delete
             Table[i] = nullptr;
         }
     }
