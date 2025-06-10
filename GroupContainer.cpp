@@ -296,6 +296,7 @@ void GroupContainer::remove(Iterator* iter) {
             delete gcIter->listIterator;
         }
         gcIter->listIterator = gcIter->currentList->newIterator();
+        gcIter->listIterator = gcIter->currentList->newIterator();
     }
 }
 
