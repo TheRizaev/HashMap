@@ -1,4 +1,4 @@
-﻿#include "Table.h"
+#include "Table.h"
 #include "GroupContainer.h"
 #include "MemoryManager.h"
 #include "Mem.h"

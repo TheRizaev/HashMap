@@ -1,4 +1,4 @@
-#pragma once
+п»ї#pragma once
 #include <iostream>
 #include <cstring>
 #include <string>
@@ -16,7 +16,7 @@ private:
         Mem memory(200 * 1024 * 1024);
         ContainerType container(memory);
         const int numElements = 1000000;
-        std::cout << "Добавление " << numElements << " элементов..." << std::endl;
+        std::cout << "Р”РѕР±Р°РІР»РµРЅРёРµ " << numElements << " СЌР»РµРјРµРЅС‚РѕРІ..." << std::endl;
         auto createStart = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < numElements; i++)
         {
@@ -26,60 +26,58 @@ private:
         }
         auto createEnd = std::chrono::high_resolution_clock::now();
         auto createDuration = std::chrono::duration_cast<std::chrono::milliseconds>(createEnd - createStart).count();
-        std::cout << "Создание: " << createDuration / 1000.0 << " секунд" << std::endl;
+        std::cout << "РЎРѕР·РґР°РЅРёРµ: " << createDuration / 1000.0 << " СЃРµРєСѓРЅРґ" << std::endl;
         auto deleteStart = std::chrono::high_resolution_clock::now();
-        std::cout << "\nУдаление всех четных ключей..." << std::endl;
+        std::cout << "\nРЈРґР°Р»РµРЅРёРµ РІСЃРµС… С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№..." << std::endl;
         for (int i = 0; i < numElements; i += 2)
         {
             container.removeByKey(&i, sizeof(int));
         }
         auto deleteEnd = std::chrono::high_resolution_clock::now();
         auto deleteDuration = std::chrono::duration_cast<std::chrono::milliseconds>(deleteEnd - deleteStart).count();
-        std::cout << "Время удаления четных ключей: " << deleteDuration / 1000.0 << " секунд" << std::endl;
-        // Проверка размера 
+        std::cout << "Р’СЂРµРјСЏ СѓРґР°Р»РµРЅРёСЏ С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№: " << deleteDuration / 1000.0 << " СЃРµРєСѓРЅРґ" << std::endl;
+        // РџСЂРѕРІРµСЂРєР° СЂР°Р·РјРµСЂР° 
         auto sizeStart = std::chrono::high_resolution_clock::now();
         size_t tableSize = container.size();
-        std::cout << "\nРазмер " << containerName << " после удаления четных ключей: " << tableSize << std::endl;
+        std::cout << "\nР Р°Р·РјРµСЂ " << containerName << " РїРѕСЃР»Рµ СѓРґР°Р»РµРЅРёСЏ С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№: " << tableSize << std::endl;
         auto sizeEnd = std::chrono::high_resolution_clock::now();
         auto sizeDuration = std::chrono::duration_cast<std::chrono::milliseconds>(sizeEnd - sizeStart).count();
-        std::cout << "Время проверки размера таблицы: " << sizeDuration / 1000.0 << " секунд" << std::endl;
+        std::cout << "Р’СЂРµРјСЏ РїСЂРѕРІРµСЂРєРё СЂР°Р·РјРµСЂР° С‚Р°Р±Р»РёС†С‹: " << sizeDuration / 1000.0 << " СЃРµРєСѓРЅРґ" << std::endl;
         container.clear();
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << "\nВремя выполнения теста с " << numElements << " элементами: " << duration / 1000.0 << " секунд" << std::endl;
-        std::cout << "Среднее время на операцию: " << (double)duration / numElements / 1000.0 << " секунд" << std::endl;
     }
 
     template <typename ContainerType>
     static void testKeyPresence(const char* containerName)
     {
-        std::cout << "\n===== ТЕСТ ПРОВЕРКИ НАЛИЧИЯ КЛЮЧЕЙ =====\n" << std::endl;
+        std::cout << "\n===== РўР•РЎРў РџР РћР’Р•Р РљР РќРђР›РР§РРЇ РљР›Р®Р§Р•Р™ =====\n" << std::endl;
 
         Mem memory(100 * 1024 * 1024);
         ContainerType container(memory);
 
-        const int numElements = 10000; // Меньше элементов для более быстрого теста
+        const int numElements = 10000; // РњРµРЅСЊС€Рµ СЌР»РµРјРµРЅС‚РѕРІ РґР»СЏ Р±РѕР»РµРµ Р±С‹СЃС‚СЂРѕРіРѕ С‚РµСЃС‚Р°
 
-        // Добавление элементов
-        std::cout << "Добавление " << numElements << " элементов..." << std::endl;
+        // Р”РѕР±Р°РІР»РµРЅРёРµ СЌР»РµРјРµРЅС‚РѕРІ
+        std::cout << "Р”РѕР±Р°РІР»РµРЅРёРµ " << numElements << " СЌР»РµРјРµРЅС‚РѕРІ..." << std::endl;
         for (int i = 0; i < numElements; i++)
         {
             int key = i;
             int value = i * 10;
             container.insertByKey(&key, sizeof(int), &value, sizeof(int));
         }
-        std::cout << "Размер до удаления: " << container.size() << std::endl;
+        std::cout << "Р Р°Р·РјРµСЂ РґРѕ СѓРґР°Р»РµРЅРёСЏ: " << container.size() << std::endl;
 
-        // Удаление четных ключей
-        std::cout << "\nУдаление всех четных ключей..." << std::endl;
+        // РЈРґР°Р»РµРЅРёРµ С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№
+        std::cout << "\nРЈРґР°Р»РµРЅРёРµ РІСЃРµС… С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№..." << std::endl;
         for (int i = 0; i < numElements; i += 2)
         {
             container.removeByKey(&i, sizeof(int));
         }
-        std::cout << "Размер после удаления: " << container.size() << std::endl;
+        std::cout << "Р Р°Р·РјРµСЂ РїРѕСЃР»Рµ СѓРґР°Р»РµРЅРёСЏ: " << container.size() << std::endl;
 
-        // Проверка наличия четных ключей (должны отсутствовать)
-        std::cout << "\nПроверка отсутствия четных ключей..." << std::endl;
+        // РџСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№ (РґРѕР»Р¶РЅС‹ РѕС‚СЃСѓС‚СЃС‚РІРѕРІР°С‚СЊ)
+        std::cout << "\nРџСЂРѕРІРµСЂРєР° РѕС‚СЃСѓС‚СЃС‚РІРёСЏ С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№..." << std::endl;
         int evenKeysFound = 0;
         int evenKeysChecked = 0;
         for (int i = 0; i < numElements; i += 2)
@@ -90,24 +88,24 @@ private:
             if (value != nullptr)
             {
                 evenKeysFound++;
-                if (evenKeysFound <= 10) // Выводим только первые 10 найденных
+                if (evenKeysFound <= 10) // Р’С‹РІРѕРґРёРј С‚РѕР»СЊРєРѕ РїРµСЂРІС‹Рµ 10 РЅР°Р№РґРµРЅРЅС‹С…
                 {
-                    std::cout << "  ОШИБКА: Найден четный ключ " << i << " со значением " << *(int*)value << std::endl;
+                    std::cout << "  РћРЁРР‘РљРђ: РќР°Р№РґРµРЅ С‡РµС‚РЅС‹Р№ РєР»СЋС‡ " << i << " СЃРѕ Р·РЅР°С‡РµРЅРёРµРј " << *(int*)value << std::endl;
                 }
             }
         }
 
         if (evenKeysFound > 0)
         {
-            std::cout << "ОШИБКА: Найдено " << evenKeysFound << " четных ключей из " << evenKeysChecked << " проверенных!" << std::endl;
+            std::cout << "РћРЁРР‘РљРђ: РќР°Р№РґРµРЅРѕ " << evenKeysFound << " С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№ РёР· " << evenKeysChecked << " РїСЂРѕРІРµСЂРµРЅРЅС‹С…!" << std::endl;
         }
         else
         {
-            std::cout << "ОК: Все " << evenKeysChecked << " четных ключей успешно удалены" << std::endl;
+            std::cout << "РћРљ: Р’СЃРµ " << evenKeysChecked << " С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№ СѓСЃРїРµС€РЅРѕ СѓРґР°Р»РµРЅС‹" << std::endl;
         }
 
-        // Проверка наличия нечетных ключей (должны присутствовать)
-        std::cout << "\nПроверка наличия нечетных ключей..." << std::endl;
+        // РџСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ РЅРµС‡РµС‚РЅС‹С… РєР»СЋС‡РµР№ (РґРѕР»Р¶РЅС‹ РїСЂРёСЃСѓС‚СЃС‚РІРѕРІР°С‚СЊ)
+        std::cout << "\nРџСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ РЅРµС‡РµС‚РЅС‹С… РєР»СЋС‡РµР№..." << std::endl;
         int oddKeysFound = 0;
         int oddKeysMissing = 0;
         int oddKeysChecked = 0;
@@ -119,35 +117,35 @@ private:
             if (value != nullptr)
             {
                 oddKeysFound++;
-                // Проверяем корректность значения
+                // РџСЂРѕРІРµСЂСЏРµРј РєРѕСЂСЂРµРєС‚РЅРѕСЃС‚СЊ Р·РЅР°С‡РµРЅРёСЏ
                 if (*(int*)value != i * 10)
                 {
-                    std::cout << "  ОШИБКА: Ключ " << i << " имеет неправильное значение: "
-                        << *(int*)value << " (ожидалось " << i * 10 << ")" << std::endl;
+                    std::cout << "  РћРЁРР‘РљРђ: РљР»СЋС‡ " << i << " РёРјРµРµС‚ РЅРµРїСЂР°РІРёР»СЊРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ: "
+                        << *(int*)value << " (РѕР¶РёРґР°Р»РѕСЃСЊ " << i * 10 << ")" << std::endl;
                 }
             }
             else
             {
                 oddKeysMissing++;
-                if (oddKeysMissing <= 10) // Выводим только первые 10 отсутствующих
+                if (oddKeysMissing <= 10) // Р’С‹РІРѕРґРёРј С‚РѕР»СЊРєРѕ РїРµСЂРІС‹Рµ 10 РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‰РёС…
                 {
-                    std::cout << "  ОШИБКА: Отсутствует нечетный ключ " << i << std::endl;
+                    std::cout << "  РћРЁРР‘РљРђ: РћС‚СЃСѓС‚СЃС‚РІСѓРµС‚ РЅРµС‡РµС‚РЅС‹Р№ РєР»СЋС‡ " << i << std::endl;
                 }
             }
         }
 
-        std::cout << "Найдено " << oddKeysFound << " нечетных ключей из " << oddKeysChecked << " ожидаемых" << std::endl;
+        std::cout << "РќР°Р№РґРµРЅРѕ " << oddKeysFound << " РЅРµС‡РµС‚РЅС‹С… РєР»СЋС‡РµР№ РёР· " << oddKeysChecked << " РѕР¶РёРґР°РµРјС‹С…" << std::endl;
         if (oddKeysMissing > 0)
         {
-            std::cout << "ОШИБКА: Отсутствует " << oddKeysMissing << " нечетных ключей!" << std::endl;
+            std::cout << "РћРЁРР‘РљРђ: РћС‚СЃСѓС‚СЃС‚РІСѓРµС‚ " << oddKeysMissing << " РЅРµС‡РµС‚РЅС‹С… РєР»СЋС‡РµР№!" << std::endl;
         }
         else
         {
-            std::cout << "ОК: Все нечетные ключи на месте" << std::endl;
+            std::cout << "РћРљ: Р’СЃРµ РЅРµС‡РµС‚РЅС‹Рµ РєР»СЋС‡Рё РЅР° РјРµСЃС‚Рµ" << std::endl;
         }
 
-        // Проверка 10 случайных ключей
-        std::cout << "\n===== ПРОВЕРКА 10 СЛУЧАЙНЫХ КЛЮЧЕЙ =====\n";
+        // РџСЂРѕРІРµСЂРєР° 10 СЃР»СѓС‡Р°Р№РЅС‹С… РєР»СЋС‡РµР№
+        std::cout << "\n===== РџР РћР’Р•Р РљРђ 10 РЎР›РЈР§РђР™РќР«РҐ РљР›Р®Р§Р•Р™ =====\n";
         srand(static_cast<unsigned>(time(nullptr)));
 
         for (int i = 0; i < 10; i++)
@@ -156,45 +154,45 @@ private:
             size_t valueSize;
             void* value = container.at(&randomKey, sizeof(int), valueSize);
 
-            std::cout << "Ключ " << randomKey << ": ";
+            std::cout << "РљР»СЋС‡ " << randomKey << ": ";
 
             if (value != nullptr)
             {
                 int intValue = *(int*)value;
-                std::cout << "найден, значение = " << intValue;
+                std::cout << "РЅР°Р№РґРµРЅ, Р·РЅР°С‡РµРЅРёРµ = " << intValue;
 
                 if (randomKey % 2 == 0)
                 {
-                    std::cout << " [ОШИБКА: четный ключ не должен существовать!]";
+                    std::cout << " [РћРЁРР‘РљРђ: С‡РµС‚РЅС‹Р№ РєР»СЋС‡ РЅРµ РґРѕР»Р¶РµРЅ СЃСѓС‰РµСЃС‚РІРѕРІР°С‚СЊ!]";
                 }
                 else
                 {
-                    std::cout << " [OK: нечетный]";
+                    std::cout << " [OK: РЅРµС‡РµС‚РЅС‹Р№]";
                     if (intValue != randomKey * 10)
                     {
-                        std::cout << " [ОШИБКА: ожидалось " << randomKey * 10 << "]";
+                        std::cout << " [РћРЁРР‘РљРђ: РѕР¶РёРґР°Р»РѕСЃСЊ " << randomKey * 10 << "]";
                     }
                 }
             }
             else
             {
-                std::cout << "не найден";
+                std::cout << "РЅРµ РЅР°Р№РґРµРЅ";
 
                 if (randomKey % 2 == 0)
                 {
-                    std::cout << " [OK: четный ключ удален]";
+                    std::cout << " [OK: С‡РµС‚РЅС‹Р№ РєР»СЋС‡ СѓРґР°Р»РµРЅ]";
                 }
                 else
                 {
-                    std::cout << " [ОШИБКА: нечетный ключ должен существовать!]";
+                    std::cout << " [РћРЁРР‘РљРђ: РЅРµС‡РµС‚РЅС‹Р№ РєР»СЋС‡ РґРѕР»Р¶РµРЅ СЃСѓС‰РµСЃС‚РІРѕРІР°С‚СЊ!]";
                 }
             }
 
             std::cout << std::endl;
         }
 
-        // Вывод 10 случайных элементов из таблицы
-        std::cout << "\n===== СЛУЧАЙНЫЕ ЭЛЕМЕНТЫ ИЗ ТАБЛИЦЫ =====\n";
+        // Р’С‹РІРѕРґ 10 СЃР»СѓС‡Р°Р№РЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ РёР· С‚Р°Р±Р»РёС†С‹
+        std::cout << "\n===== РЎР›РЈР§РђР™РќР«Р• Р­Р›Р•РњР•РќРўР« РР— РўРђР‘Р›РР¦Р« =====\n";
         Container::Iterator* iter = container.newIterator();
         if (iter)
         {
@@ -202,13 +200,13 @@ private:
             int currentElement = 0;
             int totalElements = container.size();
 
-            // Определяем шаг для равномерного распределения
+            // РћРїСЂРµРґРµР»СЏРµРј С€Р°Рі РґР»СЏ СЂР°РІРЅРѕРјРµСЂРЅРѕРіРѕ СЂР°СЃРїСЂРµРґРµР»РµРЅРёСЏ
             int step = totalElements / elementsToShow;
             if (step < 1) step = 1;
 
             int nextShowAt = 0;
 
-            std::cout << "Вывод " << elementsToShow << " элементов из " << totalElements << ":\n";
+            std::cout << "Р’С‹РІРѕРґ " << elementsToShow << " СЌР»РµРјРµРЅС‚РѕРІ РёР· " << totalElements << ":\n";
 
             do {
                 if (currentElement == nextShowAt)
@@ -222,24 +220,24 @@ private:
                         {
                             int key = *(int*)pair->key;
                             int value = *(int*)pair->value;
-                            std::cout << "  Элемент #" << currentElement
-                                << ": Ключ = " << key
-                                << ", Значение = " << value;
+                            std::cout << "  Р­Р»РµРјРµРЅС‚ #" << currentElement
+                                << ": РљР»СЋС‡ = " << key
+                                << ", Р—РЅР°С‡РµРЅРёРµ = " << value;
 
-                            // Проверяем четность ключа
+                            // РџСЂРѕРІРµСЂСЏРµРј С‡РµС‚РЅРѕСЃС‚СЊ РєР»СЋС‡Р°
                             if (key % 2 == 0)
                             {
-                                std::cout << " [ОШИБКА: ЧЕТНЫЙ КЛЮЧ!]";
+                                std::cout << " [РћРЁРР‘РљРђ: Р§Р•РўРќР«Р™ РљР›Р®Р§!]";
                             }
                             else
                             {
-                                std::cout << " [OK: нечетный]";
+                                std::cout << " [OK: РЅРµС‡РµС‚РЅС‹Р№]";
                             }
 
-                            // Проверяем корректность значения
+                            // РџСЂРѕРІРµСЂСЏРµРј РєРѕСЂСЂРµРєС‚РЅРѕСЃС‚СЊ Р·РЅР°С‡РµРЅРёСЏ
                             if (value != key * 10)
                             {
-                                std::cout << " [ОШИБКА: неправильное значение!]";
+                                std::cout << " [РћРЁРР‘РљРђ: РЅРµРїСЂР°РІРёР»СЊРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ!]";
                             }
 
                             std::cout << std::endl;
@@ -262,24 +260,24 @@ private:
         }
         else
         {
-            std::cout << "Не удалось создать итератор для вывода элементов" << std::endl;
+            std::cout << "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РёС‚РµСЂР°С‚РѕСЂ РґР»СЏ РІС‹РІРѕРґР° СЌР»РµРјРµРЅС‚РѕРІ" << std::endl;
         }
 
-        // Итоговая проверка
-        std::cout << "\n===== ИТОГ ТЕСТА =====\n";
-        int expectedSize = numElements / 2; // Половина элементов должна остаться
+        // РС‚РѕРіРѕРІР°СЏ РїСЂРѕРІРµСЂРєР°
+        std::cout << "\n===== РРўРћР“ РўР•РЎРўРђ =====\n";
+        int expectedSize = numElements / 2; // РџРѕР»РѕРІРёРЅР° СЌР»РµРјРµРЅС‚РѕРІ РґРѕР»Р¶РЅР° РѕСЃС‚Р°С‚СЊСЃСЏ
         int actualSize = container.size();
 
         if (actualSize == expectedSize && evenKeysFound == 0 && oddKeysMissing == 0)
         {
-            std::cout << "ТЕСТ ПРОЙДЕН: Все проверки выполнены успешно!" << std::endl;
+            std::cout << "РўР•РЎРў РџР РћР™Р”Р•Рќ: Р’СЃРµ РїСЂРѕРІРµСЂРєРё РІС‹РїРѕР»РЅРµРЅС‹ СѓСЃРїРµС€РЅРѕ!" << std::endl;
         }
         else
         {
-            std::cout << "ТЕСТ ПРОВАЛЕН:" << std::endl;
-            std::cout << "  - Ожидаемый размер: " << expectedSize << ", фактический: " << actualSize << std::endl;
-            std::cout << "  - Найдено четных ключей (должно быть 0): " << evenKeysFound << std::endl;
-            std::cout << "  - Отсутствует нечетных ключей (должно быть 0): " << oddKeysMissing << std::endl;
+            std::cout << "РўР•РЎРў РџР РћР’РђР›Р•Рќ:" << std::endl;
+            std::cout << "  - РћР¶РёРґР°РµРјС‹Р№ СЂР°Р·РјРµСЂ: " << expectedSize << ", С„Р°РєС‚РёС‡РµСЃРєРёР№: " << actualSize << std::endl;
+            std::cout << "  - РќР°Р№РґРµРЅРѕ С‡РµС‚РЅС‹С… РєР»СЋС‡РµР№ (РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ 0): " << evenKeysFound << std::endl;
+            std::cout << "  - РћС‚СЃСѓС‚СЃС‚РІСѓРµС‚ РЅРµС‡РµС‚РЅС‹С… РєР»СЋС‡РµР№ (РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ 0): " << oddKeysMissing << std::endl;
         }
 
         container.clear();
@@ -289,15 +287,15 @@ public:
     {
         auto start = std::chrono::high_resolution_clock::now();
 
-        // Основной тест производительности
-        testRehashing<hashTable>("таблицы");
+        // РћСЃРЅРѕРІРЅРѕР№ С‚РµСЃС‚ РїСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚Рё
+        testRehashing<hashTable>("С‚Р°Р±Р»РёС†С‹");
 
-        // Тест проверки наличия ключей
-        testKeyPresence<hashTable>("таблицы");;
+        // РўРµСЃС‚ РїСЂРѕРІРµСЂРєРё РЅР°Р»РёС‡РёСЏ РєР»СЋС‡РµР№
+        testKeyPresence<hashTable>("С‚Р°Р±Р»РёС†С‹");;
 
-        std::cout << "\n===== ТЕСТИРОВАНИЕ ХЕШ-ТАБЛИЦЫ ЗАВЕРШЕНО =====\n" << std::endl;
+        std::cout << "\n===== РўР•РЎРўРР РћР’РђРќРР• РҐР•РЁ-РўРђР‘Р›РР¦Р« Р—РђР’Р•Р РЁР•РќРћ =====\n" << std::endl;
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << "Общее время выполнения всех тестов: " << duration << " мс" << std::endl;
+        std::cout << "РћР±С‰РµРµ РІСЂРµРјСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РІСЃРµС… С‚РµСЃС‚РѕРІ: " << duration << " РјСЃ" << std::endl;
     }
 };

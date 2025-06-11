@@ -16,8 +16,7 @@ protected:
     void increaseAmount();
     void decreaseAmount();
 
-    virtual bool reHash();
-
+    char* ElemToCharArray(void* key, size_t keySize);
     size_t hashFunc(char* key, size_t keySize);
 
     size_t getArraySize() const;
@@ -38,6 +37,7 @@ public:
         size_t index;
         Iterator* listIterator;
         GroupContainer* myContainer;
+        friend class hashTable;
 
     public:
         GroupContainerIterator(GroupContainer* container, size_t startIndex, Iterator* new_it);
@@ -57,10 +57,7 @@ public:
 
     virtual Iterator* newIterator() override;
 
-    virtual void remove(Iterator* iter) override;
+    virtual void remove(Iterator* iter)=0;
 
     void clear() override;
-
-protected:
-    virtual void removeElement(void* element, size_t elemSize) = 0;
 };

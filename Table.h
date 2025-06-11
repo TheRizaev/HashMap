@@ -17,9 +17,8 @@ private:
     static const double MAX_LOAD_FACTOR;
 
 protected:
-    char* keyToCharArray(void* key, size_t keySize);
-
-    void removeElement(void* element, size_t elemSize) override;
+    virtual bool reHash();
+    void removeElement(void* element, size_t elemSize);
 public:
     hashTable(MemoryManager& mem);
 
@@ -38,4 +37,5 @@ public:
         void* getValue(size_t& size);
         void* getKey(size_t& size);
     };
+    void remove(Iterator* iter);
 };
